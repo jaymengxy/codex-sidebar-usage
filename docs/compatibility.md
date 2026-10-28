@@ -26,3 +26,19 @@ To test v0.3:
 6. Only after previous tests pass, optionally install the login item. Disable ChatGPT's native startup setting to avoid a CDP-free process race.
 
 No version compatibility guarantee is made for macOS ChatGPT updates. Document changes to renderer DOM structure before modifying selectors.
+
+## Native AppKit launcher (v0.3 candidate)
+
+- macOS 13+ target set with `LSMinimumSystemVersion`; the ChatGPT target version remains `26.1021.31345`.
+- Requires Xcode Command Line Tools and a macOS host to compile Swift/AppKit. Linux static Swift parser tests do not replace a Mac compile.
+- `node` 22+ must be available at the absolute path stored by the build script; the launcher includes a Node file chooser as a fallback.
+- `.app` embeds quota-monitor runtime and can move independently of the Git checkout. Updates require rebuilding/reinstalling.
+- Not notarized or Developer-ID signed; Mac security policy may block copied builds.
+- The old LaunchAgent and native `.app` should not be simultaneously active.
+
+## Swift Launcher compatibility
+
+- `LSMinimumSystemVersion` is set to macOS 13.0. Requires Xcode Command Line Tools for local compilation and Node 22+ at runtime.
+- A locally built `.app` includes quota source and is independent of the Git checkout path; it still needs the configured Node executable (user-selectable in GUI).
+- Built for the current Mac architecture; ad-hoc signed, not notarized. External distribution may encounter macOS Gatekeeper approval.
+- No actual macOS AppKit compilation or Dock/login testing has been performed in this environment.

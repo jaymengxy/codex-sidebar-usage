@@ -2,6 +2,8 @@
 
 ## v0.3.0 (development — macOS device gate open)
 
+- Add an actual native **Swift/AppKit** `Codex Usage Launcher.app` window and Start/Stop/Select Node/log controls.
+- Add `launcher:build/open/install/uninstall` and bundle only the runtime JS source in the `.app`, with a local ad-hoc signature. macOS compilation and device gate pending.
 - Add a CDP supervisor that monitors the ChatGPT main `app://-/index.html` renderer and reconnects when the target disappears or the WebSocket disconnects.
 - Reinject the existing widget after renderer reload and sidebar DOM re-creation without duplicating an already healthy instance.
 - Add `npm run launch`: starts ChatGPT with loopback CDP when not already running, then runs the persistent quota bridge. Never terminates or replaces a running app.

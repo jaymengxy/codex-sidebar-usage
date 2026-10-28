@@ -1,7 +1,12 @@
 # Architecture: v0.3 development
 
 ```text
-macOS login (optional)
+macOS native Swift AppKit .app (recommended interactive launcher)
+  ├─ Process launches bundled runtime/scripts/launch.mjs via installed Node 22+
+  ├─ Logs/status; Start/Stop/Select Node controls; manages helper only
+  └─ Same quota bridge and CDP monitor described below
+
+Legacy macOS login (optional alternative; NOT used simultaneously with .app)
   └─ LaunchAgent `dev.paperauk.codex-sidebar-usage` (user only)
        └─ scripts/launch.mjs
             ├─ checks loopback CDP; never force-quits ChatGPT
@@ -15,6 +20,14 @@ macOS login (optional)
                      └─ account/rateLimits/read (read-only)
 ```
 
+## Native .app distribution boundary
+
+- `macos/Launcher.swift`: AppKit UI + child-process lifecycle, no Electron/Swift WebView or app patching. It starts only its own Node helper and does not terminate the ChatGPT process.
+- `scripts/build-macos-launcher.sh` copies an allowlisted JS runtime to the `.app` bundle, compiles for the current Mac CPU using `swiftc`, writes the local Node binary path in `Info.plist`, then applies an ad-hoc local signature.
+- `scripts/install-macos-launcher.sh` manages only `~/Applications/Codex Usage Launcher.app`, refusing to overwrite unknown bundle identifiers.
+- The `.app` is movable without the source checkout, but requires the configured Node executable to remain available; a Node selector is provided. It is neither Developer ID signed nor notarized.
+- Do not run the old LaunchAgent or manual `npm start` helper in parallel with the new launcher.
+
 ## Boundaries
 
 - `src/monitor-utils.mjs` identifies only the main Codex renderer, rejecting webviews, avatar overlays, remote/non-loopback websocket addresses.
@@ -27,6 +40,9 @@ macOS login (optional)
 ## Acceptance gates
 
 - [x] Unit and syntax tests for target detection, URL safeguards, launcher no-kill behavior, plist XML escaping, quota mapping and colors.
+- [ ] `npm run launcher:build` compiles a working `.app` on an actual macOS host.
+- [ ] Double-click `.app` and verify automatic ChatGPT/CDP startup + quota UI, native Start/Stop, Dock reopen and Cmd+Q cleanup.
+- [ ] `launcher:install` and `launcher:uninstall` affect only the known launcher bundle.
 - [ ] `npm run launch` from all-apps-closed state opens ChatGPT with active CDP and injects the widget.
 - [ ] App renderer reload destroys previous widget and the monitor restores it.
 - [ ] App window replacement returns to an exactly-one-widget state.
@@ -41,3 +57,11 @@ macOS login (optional)
 - If the app-server child exits, current release may require helper restart to restore quota reads.
 - The LaunchAgent does not auto-restart on helper crash, to avoid login crash loops.
 - DOM classes/selector may change in future app versions; these are not official extension hooks.
+
+## Native Launcher.app
+
+- `macos/Launcher.swift` is a native Dock/window AppKit utility: opens and owns `Process` running `scripts/launch.mjs` through the user's installed Node 22+, displays logs, and can stop only its helper.
+- `scripts/build-macos-launcher.sh` compiles Swift on a local Mac, packages an explicit allowlist of JS source under `Contents/Resources/runtime` (never account or `.env` files), stores the Node executable path, and applies a local ad-hoc signature.
+- `scripts/install-macos-launcher.sh` copies only the recognized bundle ID into `~/Applications`; does not touch `ChatGPT.app`.
+- The native app refuses to run alongside the old LaunchAgent, preventing accidental duplicate quota monitors through that path. Stop manual monitors before using the native app.
+- AppKit build and runtime verification remain device-gated.

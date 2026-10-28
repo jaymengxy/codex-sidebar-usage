@@ -17,6 +17,10 @@
     "launch": "node scripts/launch.mjs",
     "login:install": "node scripts/login-item.mjs install",
     "login:uninstall": "node scripts/login-item.mjs uninstall",
-    "login:status": "node scripts/login-item.mjs status"
+    "login:status": "node scripts/login-item.mjs status",
+    "launcher:build": "bash scripts/build-macos-launcher.sh",
+    "launcher:open": "open \"dist/Codex Usage Launcher.app\"",
+    "launcher:install": "bash scripts/install-macos-launcher.sh install",
+    "launcher:uninstall": "bash scripts/install-macos-launcher.sh uninstall"
   }
 }

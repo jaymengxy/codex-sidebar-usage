@@ -10,7 +10,7 @@ An **unofficial** compact quota indicator for the Codex sidebar of the ChatGPT m
 | --- | --- | --- |
 | v0.1 | **PASS** (user tested) | 52px rail / 36px content, avatar-relative placement, DOM injection |
 | v0.2.1 | **PASS** (user tested, merged `main`) | Real Codex rate limits, refresh, 5h green / 7d orange bars |
-| v0.3 | **Development / device acceptance pending** | Restart/reload reconnection; optional macOS launcher and LaunchAgent |
+| v0.3 | **Development / device acceptance pending** | Restart/reload reconnection; Swift `.app` Launcher and optional legacy LaunchAgent |
 
 **Verified Mac:** ChatGPT `26.1021.31345`, bundle ID `com.openai.codex`, main renderer `app://-/index.html`. Other versions and login-start behavior are unverified.
 
@@ -39,9 +39,43 @@ npm run launch       # launches ChatGPT with CDP if not already running; monitor
 
 `npm start` remains available if you have *already launched ChatGPT with CDP*. `npm run probe` works without CDP; it only requests read-only rate limits.
 
+
+## Native Swift Launcher.app — double-click (v0.3 preview)
+
+A genuine **AppKit macOS application** is provided in `macos/Launcher.swift`. It bundles the JS quota-monitor files in its own `Contents/Resources/runtime`, so moving the built `.app` to `~/Applications` does **not** require keeping the Git repository at its original path. It still needs an installed Node.js 22+ executable; you can select a new Node path from the app UI if needed. The launcher is an unofficial, non-notarized local utility, and does not modify ChatGPT.
+
+### Build locally on your Mac
+
+Install Xcode Command Line Tools if `swiftc` is missing (`xcode-select --install`). From the v0.3 branch run:
+
+```bash
+npm run check && npm test
+npm run launcher:build
+npm run launcher:open
+```
+
+The builder compiles `Codex Usage Launcher.app` using Swift/AppKit and ad-hoc signs it for local use. To install into `~/Applications` and add to Dock:
+
+```bash
+npm run launcher:install
+open "$HOME/Applications/Codex Usage Launcher.app"
+```
+
+Double-clicking the `.app` automatically tries to start ChatGPT with loopback CDP and the quota helper. It offers **启动监控 / 停止监控 / 选择 Node…** buttons and a log window. Closing the window keeps the launcher running; reopen it from Dock. **Cmd+Q stops its own helper but does not close ChatGPT.** The helper's refresh and re-injection behavior is the same as `npm run launch`.
+
+The app records the local Node path at build time. If you update or relocate Node, select its executable in the app or rebuild. If you update the project source, **rebuild and reinstall the `.app`** to embed the new version.
+
+**Avoid running duplicate helpers:** Stop any old `npm start`/`npm run launch` process and uninstall the legacy login item (`npm run login:uninstall`) before opening the native app. The native app refuses to start while the old LaunchAgent plist exists. Do not enable both the old LaunchAgent and an independent login launch of this `.app`. For now, automatic login of the `.app` itself is untested and not configured by the installer.
+
+If ChatGPT is already running without CDP, the launcher will show an error; quit ChatGPT fully with Cmd+Q and click **启动监控** again. It never force-quits an existing ChatGPT instance.
+
+To remove only the installed launcher: `npm run launcher:uninstall`. No app credentials or login tokens are bundled.
+
+**macOS device validation remains open:** the Swift parser and automated static tests pass, but the actual AppKit build cannot run in our non-macOS environment.
+
 ## Optional: start automatically at macOS login
 
-**Opt in only after manual `npm run launch` works on your Mac.** Stop the manual helper with `Ctrl+C` before installing to avoid running two monitors. Disable ChatGPT's own “Open at Login” option first to avoid a race where ChatGPT launches without CDP.
+**Opt in only after manual `npm run launch` works on your Mac.** Disable ChatGPT's own “Open at Login” option first to avoid a race where ChatGPT launches without CDP.
 
 ```bash
 npm run login:install   # writes ~/Library/LaunchAgents/dev.paperauk.codex-sidebar-usage.plist
