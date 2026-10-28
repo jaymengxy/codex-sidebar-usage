@@ -38,8 +38,8 @@
       #${WIDGET_ID} .reload:hover{background:color-mix(in srgb,currentColor 9%,transparent)}
       #${WIDGET_ID} .reload:disabled{cursor:wait;opacity:.5}
     </style>
-    <div class="quota" data-quota="five" title="正在读取额度"><span class="label">5h</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
-    <div class="quota" data-quota="week" title="正在读取额度"><span class="label">7d</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
+    <div class="quota" data-quota="five"><span class="label">5h</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
+    <div class="quota" data-quota="week"><span class="label">7d</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
     <button type="button" class="reload" aria-label="刷新额度" title="点击刷新额度">↻</button>
   `;
   nav.insertBefore(root, anchor);
@@ -153,10 +153,9 @@
       el.querySelector('.pct').textContent = remaining === null ? '--' : `${Math.round(remaining)}%`;
       el.querySelector('.fill').style.width = remaining === null ? '0%' : `${remaining}%`;
       const reset = valid ? formatReset(value.resetsAt) : '未提供';
-      el.title = `${label}额度：${remaining === null ? '暂无数据' : `${Math.round(remaining)}% 剩余`}` +
-        `\n重置时间：${reset}` +
-        `\n最近成功更新：${lastSuccess ? new Date(lastSuccess).toLocaleTimeString() : '尚未更新'}` +
-        (stale ? '\n⚠ 读取失败，显示上次缓存的数据' : '');
+      // Reset information is presented in the explicit click popover.
+      // Avoid a second native title tooltip appearing on hover.
+      el.removeAttribute('title');
     }
     if (popover?.isConnected && popoverKey) popover.textContent = detailsFor(popoverKey);
     refreshButton.title = (busy ? '正在刷新额度' : '点击立即刷新额度') +
