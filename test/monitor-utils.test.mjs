@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findMainTarget, localWebSocketUrl, WIDGET_PROBE, probeState } from '../src/monitor-utils.mjs';
+import { findMainTarget, localWebSocketUrl, WIDGET_PROBE, probeState, abortableSleep } from '../src/monitor-utils.mjs';
 import { parseArguments } from '../scripts/run.mjs';
 import { isChatGPTRunning, ensureChatGPTStarted, chatGPTLaunchEnvironment, CDP_FLAGS } from '../scripts/launch.mjs';
 import { xmlEscape, makePlist } from '../scripts/login-item.mjs';
@@ -91,4 +91,13 @@ test('LaunchAgent plist escapes paths and runs only when explicitly installed', 
   assert.match(plist, /&lt;repo&gt;/);
   assert.match(plist, /<key>RunAtLoad<\/key><true\/>/);
   assert.match(plist, /<key>KeepAlive<\/key><false\/>/);
+});
+
+test('SIGTERM aborts long monitor polling delay immediately', async () => {
+  const controller = new AbortController();
+  const pending = abortableSleep(60000, controller.signal);
+  controller.abort();
+  await pending; // If the timer survives, this test process hangs.
+  const alreadyAborted = abortableSleep(60000, controller.signal);
+  await alreadyAborted;
 });
