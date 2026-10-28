@@ -1,84 +1,78 @@
 # Codex Sidebar Usage
 
-A **non-official, experimental** narrow sidebar usage indicator for the Codex view inside the ChatGPT macOS desktop app.
+An **unofficial, experimental** 52px sidebar quota widget for Codex in the ChatGPT macOS desktop app. No app bundle patches, third-party packages, or token extraction.
 
-![Status](https://img.shields.io/badge/status-layout%20prototype-orange)
+## Acceptance status
 
-## Scope / current status
+- **v0.1 PASS (user tested):** main renderer CDP and 52px rail/36px avatar placement on ChatGPT `26.1021.31345` (`com.openai.codex`).
+- **v0.2 CANDIDATE (partial acceptance):** User confirmed live quota display; progress-bar colors required a CSS fix (0.2.1), pending macOS visual recheck. Snapshot refresh and other interaction details are still pending separate acceptance.
+- **v0.3 planned:** persistent startup and resilience to app updates.
 
-- ✅ CDP port and main renderer discovered by user on ChatGPT `26.1021.31345` (`com.openai.codex`).
-- ✅ Simple `CDP OK` element inserted into main renderer by user via DevTools.
-- ✅ User inspected profile avatar hierarchy and found a 52px sidebar rail with 36px content area.
-- ⚠️ Widget placement is implemented from that hierarchy, **not yet verified on the actual device**.
-- ⬜ Real five-hour / weekly quota data source is **not connected**. Labels show `--` by default.
-- ⬜ Refresh button is **disabled** until an async quota fetcher is provided. Hover and manual refresh need a verified data adapter.
-- ⬜ Persistent injection at login and update compatibility remain future work.
+This is not an official OpenAI extension; CDP renderer injection is unsupported and may break with application updates.
 
 ## Requirements
 
-- macOS ChatGPT app matching the above structure (other versions untested)
-- Node.js 22+ for the optional dependency-free injector
-- An existing ChatGPT process started with CDP bound to `127.0.0.1:9238`
+- ChatGPT for macOS with CDP open at `127.0.0.1:9238` (user has validated this on version `26.1021.31345`).
+- Node.js 22+, no `npm install` required.
+- Signed-in Codex account accessible to the bundled `/Applications/ChatGPT.app/Contents/Resources/codex` app-server. If the binary is missing, a `codex` binary on `PATH` is tried; that may use a **different account**.
 
-This project is **not affiliated with or endorsed by OpenAI**. Chromium CDP is a debugging mechanism; OpenAI does not officially promise a renderer DOM plugin API.
+## Quick start
 
-## Quick start (layout only)
-
-1. Quit ChatGPT completely (Cmd+Q).
-2. In Terminal:
+1. Quit ChatGPT with `Cmd+Q`.
+2. Start the signed ChatGPT app with loopback-only CDP:
 
    ```bash
    APP="/Applications/ChatGPT.app"
    EXE=$(plutil -extract CFBundleExecutable raw -o - "$APP/Contents/Info.plist")
    "$APP/Contents/MacOS/$EXE" \
-     --remote-debugging-address=127.0.0.1 \
-     --remote-debugging-port=9238
+      --remote-debugging-address=127.0.0.1 \
+      --remote-debugging-port=9238
    ```
 
-3. With the ChatGPT main window showing the 52px Codex sidebar, from the project folder run:
+3. Open the Codex view; leave it visible. In the repository directory:
 
    ```bash
    npm run check
-   npm run inject
+   npm test
+   npm run probe  # read-only, does not inject UI
    ```
 
-4. If no widget appears, inspect the app via `chrome://inspect/#devices`, and inspect the main `app://-/index.html` renderer. The script logs diagnostics to its Console. It does not change any application bundle files.
+4. **Compare `probe` percentages with the built-in ChatGPT/Codex Usage display.** If they differ materially, do not proceed: it may be another account or an upstream reporting difference.
+5. To inject and keep the read-only bridge active:
 
-The UI should show **5h --** and **7d --** plus a disabled refresh button directly above the avatar. Successful injection is only a DOM layout test, *not* evidence that quota fetching works.
+   ```bash
+   npm start
+   ```
 
-### Simulated values (for layout review only)
+   The narrow widget shows **remaining** (100 minus `usedPercent`), not consumed %. Hover on each value for reset timestamp and last successful update. Click ↻ to request a snapshot immediately (10s retry cooldown). Hover fetches only if last successful snapshot is 60+ seconds old. Automatic refresh checks every 120 seconds. This is a server snapshot, **not exact real-time accounting**.
 
-With the main renderer DevTools Console open:
-
-```js
-window.__codexUsageSidebarPrototype.update({
-  fiveHour: { usedPercent: 38, resetsAt: 1793200000 },
-  weekly: { usedPercent: 59, resetsAt: 1793500000 }
-});
-```
-
-The widget displays **remaining** percent (62% and 41%) by subtracting `usedPercent` from 100. Timestamps here are sample data only.
-
-Uninstall from the running view:
+**Keep the terminal running** for refresh. `Ctrl+C` stops the helper; re-injection is needed after renderer reload/restart. The injected element can be removed without changing the app binary:
 
 ```js
-window.__codexUsageSidebarPrototype?.destroy();
+window.__codexUsageSidebarV02?.destroy();
 ```
 
-This is ephemeral and disappears when the window is reloaded. No files in ChatGPT.app are changed.
+Note: `npm run inject-layout` only injects HTML, without the persistent quota bridge. To fetch quota, use `npm start`.
+
+## Data source and trust boundary
+
+The local Node process launches Codex App Server using its built-in **read-only** `account/rateLimits/read` RPC. It does not inspect or copy auth files, and communicates with the ChatGPT renderer only over an already enabled CDP loopback port. CDP binding carries a fixed `read` action and returns normalized **usage % + reset timestamps only**; no account IDs or credentials enter the renderer.
+
+5h is identified by `windowDurationMins=300`; weekly by `10080`. Missing windows show `--` (e.g., some accounts only expose a weekly bucket). Errors retain the last successful snapshot and show a stale warning in the tooltip.
+
+**Important:** API rates depend on the account authenticated for the spawned app-server, which is not guaranteed to be identical to the visible ChatGPT desktop profile. The manual `npm run probe` comparison is a required acceptance step.
+
+### Security
+
+- Run CDP only on `127.0.0.1`, not a LAN interface. CDP grants broad renderer access to local processes.
+- Do not publish session tokens, `~/.codex/auth.json`, WebSocket URLs, or raw App Server responses.
+- `npm start` does not host an HTTP server and never makes direct requests from an embedded browser to OpenAI usage endpoints.
+- This code is a private utility, not an officially supported extension point.
 
 ## Roadmap
 
-- **v0.1**: Confirm DOM anchor, sizing, dark mode and responsive sidebar behavior on target macOS app.
-- **v0.2**: Add a trusted, least-privilege local quota adapter with mapping for 5h and 7d windows, initial load, manual refresh and TTL-limited hover refresh; retain stale data on errors.
-- **v0.3**: Optional automatic injection when ChatGPT launches, tests and compatibility checks for updates.
+- [x] v0.1: DOM probe, 52px sidebar placement (user verified)
+- [ ] v0.2: quota bridge and refresh behavior (live quota values verified by user; 0.2.1 bar colors need visual recheck)
+- [ ] v0.3: restart/update compatibility, optional launcher
 
-## Security notes
-
-CDP has extensive powers over a local application renderer. Use `127.0.0.1` only, never `0.0.0.0`, and stop the debugging instance when done. Never post full session URLs, tokens, WebSocket identifiers or authenticated responses into issues. Do not commit `~/.codex/auth.json` or any login/session data. The project will not need to read app credentials for the layout prototype.
-
-See [architecture](docs/architecture.md) and [compatibility notes](docs/compatibility.md).
-
-## Publish to GitHub
-
-Suggested repository name: `jaymengxy/codex-sidebar-usage` (initially **private**). See [macOS publishing instructions (中文)](docs/发布到GitHub.md).
+See [architecture](docs/architecture.md) and [compatibility](docs/compatibility.md).

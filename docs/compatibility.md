@@ -1,22 +1,18 @@
-# Compatibility / evidence
+# Version compatibility
 
-Environment provided by one user on 2026-10-28:
+## Observed target
 
-| Field | Value |
-| --- | --- |
-| App bundle path | `/Applications/ChatGPT.app` |
-| `CFBundleShortVersionString` | `26.1021.31345` |
-| Bundle ID | `com.openai.codex` |
-| Executable | `ChatGPT` |
-| CDP endpoint | `http://127.0.0.1:9238/json/list` (when launched with flags) |
-| Primary renderer | `app://-/index.html` (`type: page`) |
-| Sidebar rail | `nav` with class containing `group/sidebar-rail` |
-| Sidebar width | 52px |
-| Avatar | `img.shrink-0.object-cover.rounded-full.size-6` 24px, inside button 36px |
-| Bottom avatar branch | direct nav child `.relative.shrink-0.w-9`, width 36px |
+- macOS ChatGPT `26.1021.31345`, bundle ID `com.openai.codex`
+- CDP enabled by `--remote-debugging-address=127.0.0.1 --remote-debugging-port=9238`
+- Main renderer `app://-/index.html`
+- Rail `nav` class includes `group/sidebar-rail`; width 52px
+- Avatar image 24x24; content rail 36px
+- v0.1 layout accepted by user on target build.
+- v0.2 real quota bridge is a candidate; no Mac runtime acceptance yet.
 
-**Observed:** A fixed-position `CDP OK` badge was inserted into the main page successfully.
+## Detect breakage
 
-**Not yet observed:** Final widget anchored into the native navigation flex flow, actual quota retrieval, or successful automated launcher injection. These remain unverified until a device test is reported.
-
-Beware: `app://-/index.html?initialRoute=%2Favatar-overlay` is a separate overlay renderer, not the intended main window. Embedded `chatgpt.com` and `codex-sandbox://` WebViews are also not the target.
+- If no rail or avatar is found, injection aborts rather than patching an arbitrary element.
+- Changes in Codex installation binary path may require `npm start -- --codex-path /absolute/path/to/codex`.
+- If CDP port is absent, start ChatGPT with the debug flags. Never expose CDP on a non-loopback address.
+- Do not confuse the main page with `avatar-overlay`, `detached-window`, or embedded webview targets.
