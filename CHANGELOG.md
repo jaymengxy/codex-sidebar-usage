@@ -2,6 +2,13 @@
 
 ## v0.3.0 (development — macOS device gate open)
 
+### Startup environment isolation fix (requires Mac re-test)
+- Fix Swift Launcher forwarding `CODEX_CLI_PATH` to ChatGPT, potentially causing an incompatible App Server and the “organization settings could not be loaded” startup error.
+- Use private `CSU_CODEX_CLI_PATH` only for the quota reader. Never change user-wide environment variables.
+- Launch signed ChatGPT via macOS Launch Services instead of raw bundle executable.
+- Add regression tests and recovery instructions; quotas UI and data flow unchanged.
+
+
 - Add a native **Swift/AppKit** `Codex Usage Launcher.app` with one-click startup, monitor controls, local diagnostics, and Node-path selection.
 - Add `npm run launcher:build`, `launcher:open`, `launcher:install`, `launcher:uninstall`; package the JS runtime inside `.app` without credentials. Local ad-hoc signing; macOS build and GUI device gate still open.
 - Add a CDP supervisor that monitors the ChatGPT main `app://-/index.html` renderer and reconnects when the target disappears or the WebSocket disconnects.
