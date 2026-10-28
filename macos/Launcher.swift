@@ -15,6 +15,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
     private var stdoutPipe: Pipe?
     private var stderrPipe: Pipe?
     private var stopping = false
+    private var stopWatchdog: DispatchWorkItem?
 
     private var resourceRoot: URL? { Bundle.main.resourceURL }
     private var runtimeRoot: URL? { resourceRoot?.appendingPathComponent("runtime", isDirectory: true) }
@@ -163,7 +164,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
             let message = String(decoding: data, as: UTF8.self)
             DispatchQueue.main.async { [weak self] in
                 self?.appendLog(message)
-                if message.contains("已连接 ChatGPT") || message.contains("额度组件已注入") {
+                if self?.stopping == false && (message.contains("已连接 ChatGPT") || message.contains("额度组件已注入")) {
                     self?.setStatus("额度监控运行中 · 已连接 ChatGPT", running: true)
                 }
             }
@@ -255,13 +256,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
             let code = finished.terminationStatus
             DispatchQueue.main.async { [weak self] in
                 guard let self = self, self.helper === finished else { return }
-                self.helper = nil
-                self.stdoutPipe?.fileHandleForReading.readabilityHandler = nil
-                self.stderrPipe?.fileHandleForReading.readabilityHandler = nil
-                self.stdoutPipe = nil
-                self.stderrPipe = nil
-                self.setStatus(self.stopping ? "监控已停止（ChatGPT 保持运行）" : "额度监控已退出（代码 \(code)），请查看日志", running: false)
-                self.stopping = false
+                self.finishMonitorExit(code: code)
             }
         }
         do {
@@ -280,15 +275,50 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// One exit path for terminationHandler and delayed process-state updates.
+    /// Avoid an everlasting “stopping…” label when a child exited before its callback.
+    private func finishMonitorExit(code: Int32) {
+        stopWatchdog?.cancel()
+        stopWatchdog = nil
+        helper = nil
+        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
+        stderrPipe?.fileHandleForReading.readabilityHandler = nil
+        stdoutPipe = nil
+        stderrPipe = nil
+        setStatus(stopping ? "监控已停止（ChatGPT 保持运行）" : "额度监控已退出（代码 \(code)），请查看日志", running: false)
+        stopping = false
+    }
+
     private func stopHelper() {
-        guard let process = helper, process.isRunning else { return }
+        guard let process = helper else { return }
+        guard !stopping else { return } // A second click must not be necessary.
         stopping = true
-        process.terminate() // SIGTERM: Node cleans up only its CDP and App Server bridge.
+        setStatus("正在停止监控…", running: true)
+        stopButton.isEnabled = false
+
+        if !process.isRunning {
+            finishMonitorExit(code: process.terminationStatus)
+            return
+        }
+        process.terminate() // SIGTERM affects only our Node bridge, never ChatGPT.
+        let watchdog = DispatchWorkItem { [weak self, weak process] in
+            guard let self = self, let process = process, self.helper === process else { return }
+            if !process.isRunning {
+                self.finishMonitorExit(code: process.terminationStatus)
+            } else {
+                // Do not claim stopped while the helper is still running.
+                self.setStatus("等待监控进程退出…如持续无响应请查看日志", running: true)
+                self.stopButton.isEnabled = true
+                self.stopping = false
+            }
+        }
+        stopWatchdog?.cancel()
+        stopWatchdog = watchdog
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: watchdog)
     }
 
     @objc private func stopMonitor(_ sender: Any?) {
         stopHelper()
-        if helper != nil { setStatus("正在停止监控…", running: true) }
     }
 }
 
