@@ -2,138 +2,164 @@
 
 [![English](https://img.shields.io/badge/README-English-777777)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-377cfb)](README.zh-CN.md)
 
-这是一个**非官方 macOS 小工具**，在 ChatGPT 桌面客户端集成的 Codex 左侧窄导航栏中，显示 **5 小时和每周剩余额度**。支持彩色进度条、重置时间、刷新以及窗口重载后自动恢复。
+一个轻量的非官方 macOS 小工具，让你在 **ChatGPT 桌面客户端的左侧导航栏** 中直接查看 **Codex 使用额度**，无需反复打开用量设置页面。
 
-> **本项目与 OpenAI 无关联。** 它依赖 CDP 调试接口和 ChatGPT 的内部 DOM，并非官方插件机制；客户端升级后可能失效。建议仅在自己的电脑上使用。
+> 本项目由独立开发者维护，**并非 OpenAI 官方产品，也未获得 OpenAI 背书**。它使用桌面客户端的非公开调试接口，ChatGPT 更新后可能需要调整兼容性。
 
-## 功能
+## 功能介绍
 
-- 5h / 7d 剩余额度百分比（不是已使用比例）。
-- 五小时进度条为**绿色**（`#16A34A`），每周进度条为**橙色**（`#D97706`）。
-- **点击额度**弹出包含剩余比例、重置时间和更新时间的小浮窗；同一浮窗已经打开时不会重复创建；点击空白处或按 **Esc** 关闭。
-- 鼠标悬停使用普通箭头，不再显示问号；仍支持悬停触发刷新（数据至少 60 秒未更新时）。
-- 点击 ↻ 手动刷新，约每 120 秒自动刷新；额度是服务端快照，不是逐秒精确更新。
-- ChatGPT 页面重载或侧栏元素重建后自动重新注入（约每 3 秒检测一次）。
-- 可使用**终端一条命令启动**，也可安装真正的 **Swift/AppKit 原生 Launcher.app** 双击启动。
+- **剩余额度：**展示 5 小时（5h）和每周（7d）的可用额度百分比。
+- **彩色进度条：**5 小时额度为绿色，每周额度为橙色。
+- **重置时间：**点击任一额度，可查看剩余比例、重置时间和最近更新时间；点击浮窗外部或按 **Esc** 关闭。
+- **便捷刷新：**点击 ↻ 手动更新额度，也支持定期刷新和交互时按需刷新。
+- **自动恢复：**ChatGPT 窗口重新加载后，额度组件可自动恢复。
+- **两种启动方式：**使用终端一条命令启动，或安装可以从 Finder、Dock 双击打开的 macOS 原生 Launcher。
 
-## 环境要求
+额度来自服务端用量快照，不保证每次请求后立即变化。无法获取某一时间窗口的数据时，将显示 `--`。
 
-- macOS 13+，ChatGPT 安装在 `/Applications/ChatGPT.app`。
-- Node.js **22+**，可通过 `node --version` 检查；项目无需安装额外 npm 依赖。
-- 如果需要构建原生 Launcher：安装 Xcode Command Line Tools（`xcode-select --install`）。
-- 可用的 Codex CLI / App Server；要和客户端原生 Usage 页面核对额度及登录账户。
-- CDP 仅使用本机地址 `127.0.0.1:9238`。
+## 使用前准备
 
-## 下载与准备
+- **macOS 13 或更高版本**，ChatGPT 安装在 `/Applications/ChatGPT.app`。
+- **Node.js 22 或更高版本**，可使用 `node --version` 检查。
+- 如需生成原生 Launcher，还需要 **Xcode Command Line Tools**；未安装时可执行 `xcode-select --install`。
+- 本机有可用的 Codex CLI / App Server，并使用你想查看额度的账号登录。
+
+项目无需安装额外的第三方 npm 依赖。
+
+### 获取项目
 
 ```bash
-git clone git@github.com:jaymengxy/codex-sidebar-usage.git
+git clone https://github.com/jaymengxy/codex-sidebar-usage.git
 cd codex-sidebar-usage
-# 在 PR #2 合并前，最新开发版本位于此分支：
 git switch feat/auto-launch-v0.3
-
-node --version
-npm run check
-npm test
-npm run probe
 ```
 
-`npm run probe` 只读取额度，不注入客户端。请先和 ChatGPT 原生 Usage 页核对，再开始使用。
+目前原生 Launcher 版本位于 `feat/auto-launch-v0.3` 分支。你的 GitHub 账号需要有仓库访问权限。
 
-## 方式一：直接使用终端启动
+## 方式一：使用终端启动
 
-首先按 **Cmd+Q** 完全退出 ChatGPT，然后在项目目录执行：
+适合首次体验，或希望保留终端日志的使用者。
+
+1. 先在 ChatGPT 中按 **Cmd+Q** 完全退出客户端。
+2. 打开终端，进入项目目录，执行：
 
 ```bash
 npm run launch
 ```
 
-这条命令会在 ChatGPT 未运行时，以启用本机 CDP 的方式启动客户端，并连接额度组件。**终端保持运行**，才能持续刷新和恢复注入。按 **Ctrl+C** 停止监控，不会关闭 ChatGPT。
+命令会自动以支持侧栏组件的方式启动 ChatGPT，同时开启额度监控。**不需要自己开启 CDP 或配置调试端口。**
 
-如果 ChatGPT **已经开启 CDP**，也可以单独执行 `npm start`。如果 ChatGPT 已正常运行但没有开启 CDP，需要先退出客户端；本工具不会强制结束或重复启动它。
+使用期间保持这个终端窗口运行。需要停止监控时按 **Ctrl+C**，ChatGPT 本身不会退出。
 
-高级排查：也可以手动启动 CDP，再从另一个终端运行监控：
+如果 ChatGPT 已经通过普通方式启动，请先退出，再使用上面的命令启动，以便建立额度组件所需的本机连接。
+
+## 方式二：生成原生 macOS Launcher
+
+适合日常使用，无需每次打开终端，也可以将应用放到 Dock 中。
+
+### 构建与安装
+
+在项目目录运行：
+
+```bash
+npm run launcher:build
+npm run launcher:install
+```
+
+然后退出已经通过普通方式启动的 ChatGPT，打开 Launcher：
+
+```bash
+open "$HOME/Applications/Codex Usage Launcher.app"
+```
+
+也可以通过 Finder 双击 **Codex Usage Launcher.app**，或者将它拖入 Dock。
+
+Launcher 会自动启动 ChatGPT 和额度监控，并提供 **启动监控、停止监控、选择 Node…、选择 Codex…** 以及运行日志。
+
+- 关闭 Launcher 的窗口不会停止监控；点击 Dock 图标即可重新打开窗口。
+- 点击「停止监控」或使用 **Cmd+Q** 退出 Launcher，会停止它管理的监控进程，但不会关闭 ChatGPT。
+- 如果需要更换 Node.js 或 Codex CLI 的执行文件，可以在 Launcher 中选择新路径。
+- 更新项目代码后，需要重新执行 `npm run launcher:build` 和 `npm run launcher:install`。
+
+Launcher 会打包额度监控所需的脚本，但仍使用本机安装的 Node.js 和 Codex CLI，**不会修改原版 ChatGPT.app**。
+
+### Launcher 图标
+
+构建时会读取**本机已安装的 ChatGPT 图标**，并在左下角加入绿色和橙色的双横向进度条，作为 Launcher 的识别标志。图标中的进度条并非实时额度；仓库也不会附带 ChatGPT 原始图标文件。
+
+卸载 Launcher：
+
+```bash
+npm run launcher:uninstall
+```
+
+此命令只删除 `~/Applications` 中的 Launcher，不会删除 ChatGPT 或账号数据。
+
+## 两种启动方式有什么区别？
+
+| | 终端启动 | 原生 Launcher |
+| --- | --- | --- |
+| 适合 | 首次体验、开发调试 | 日常使用 |
+| 准备工作 | Node.js 22+ | Node.js 22+、Xcode Command Line Tools |
+| 启动方式 | `npm run launch` | 双击 Launcher.app |
+| 是否需要保持终端运行 | 需要 | 不需要 |
+| 停止监控 | Ctrl+C | 停止监控 / Cmd+Q |
+| ChatGPT 重载后自动恢复 | 支持 | 支持 |
+
+两种方式都会自动建立额度组件需要的本机调试连接。
+
+## 常见问题
+
+**ChatGPT 已经运行，却无法启动额度组件怎么办？**
+
+先在 ChatGPT 中按 **Cmd+Q** 完全退出，然后通过 `npm run launch` 或原生 Launcher 打开。直接正常启动的 ChatGPT 不会自动开启本工具需要的调试连接。
+
+**Launcher 找不到 Node.js 或 Codex 怎么办？**
+
+在终端分别运行 `node --version` 和 `command -v codex`，检查安装与执行路径。通过 Launcher 的「选择 Node…」或「选择 Codex…」指定可执行文件，再启动监控。
+
+**没有显示额度组件怎么办？**
+
+确认 ChatGPT 主窗口已经打开、监控进程正在运行，且没有同时启动多个监控程序。可以完全退出 ChatGPT，再使用以上任一方式重新打开。
+
+**额度数字与 ChatGPT 原生用量页面不一致怎么办？**
+
+可以在项目目录执行 `npm run probe`，读取一次额度快照，与 ChatGPT 用量页面核对。还需要确认 Codex CLI 使用的是正确的登录账号；服务端数据也可能存在更新延迟。
+
+**能否在登录 macOS 后自动启动？**
+
+项目提供了额外的 LaunchAgent 登录启动方案，面向熟悉 macOS 的高级用户。不要将它与原生 Launcher 同时运行，使用前可参考[架构文档](docs/architecture.md)。
+
+## 高级用法：连接已开启 CDP 的 ChatGPT
+
+**使用前面两种推荐方式时，不需要执行本节操作。**
+
+CDP 是 Chromium DevTools Protocol，即 Chromium 调试协议。本工具通过仅监听本机的 `127.0.0.1:9238` 端口连接 ChatGPT。普通方式打开的 ChatGPT 默认不会启用该端口，但 `npm run launch` 和原生 Launcher 都会自动处理。
+
+如果希望自己启动 ChatGPT，再单独运行额度监控，可以采用以下步骤：
+
+1. 完全退出 ChatGPT。
+2. 在一个终端中使用带 CDP 参数的方式启动：
 
 ```bash
 /usr/bin/open -a "/Applications/ChatGPT.app" --args \
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port=9238
-# 另一个终端窗口：
+```
+
+3. 在另一个终端中进入项目目录，执行：
+
+```bash
 npm start
 ```
 
-## 方式二：生成原生 macOS Launcher.app
+保持 `npm start` 运行，额度组件便能持续刷新。这种两进程方式主要用于高级操作，日常使用无需如此配置。
 
-此方式构建一个可以从 Finder 双击、固定到 Dock 的真正 macOS 应用。生成的 `.app` 会内置额度监控脚本，但仍需要本机安装 Node.js 22+ 和相应的 Codex CLI。**不会修改原版 ChatGPT.app**。
+## 隐私、安全与兼容性
 
-```bash
-# 先停止之前运行的 npm start / npm run launch
-# 如装过旧版登录启动项，先卸载：
-npm run login:uninstall
+- CDP 具有较高的本机调试权限，只应监听 **127.0.0.1**，不要开放到局域网或公网。
+- 额度通过本地 Codex App Server 的只读 `account/rateLimits/read` 接口获取；项目不会复制登录文件，也不会把登录 Token 注入 ChatGPT 界面。
+- 原生 Launcher 在你的 Mac 上构建并进行本地签名，未进行面向公众分发的 Apple 公证。
+- ChatGPT 的内部界面可能随客户端版本变化，不能保证始终兼容未来版本。
 
-npm run launcher:build
-npm run launcher:install
-open "$HOME/Applications/Codex Usage Launcher.app"
-```
-
-Launcher 窗口中提供 **启动监控、停止监控、选择 Node…、选择 Codex…** 和日志区域。关闭窗口不会停止监控，可以从 Dock 再次打开；**Cmd+Q 退出 Launcher 会停止它管理的监控进程，但不会退出 ChatGPT。**
-
-**自定义图标：** 在本机构建时，从已安装的 ChatGPT.app 读取系统图标，然后在左下角绘制绿色和橙色双横向进度条。这只是固定的识别元素，**不是动态额度**。GitHub 仓库不包含 ChatGPT 的原始图标。代码更新或 Node 路径改变后，需要重新构建和安装。
-
-```bash
-npm run launcher:uninstall  # 只移除 ~/Applications/Codex Usage Launcher.app
-```
-
-生成的应用采用本机临时（ad-hoc）签名，没有 Apple Developer ID 公证。如果拷贝到其他电脑，可能需要在系统中额外允许打开。
-
-### 两种方式的区别
-
-| | 终端方式 | 原生 Launcher |
-|---|---|---|
-| 准备工作 | Node 22+ | Node 22+、Swift 构建工具 |
-| 日常启动 | `npm run launch` | 双击 Launcher.app |
-| 停止监控 | Ctrl+C | 点击停止监控 / Cmd+Q |
-| 自动恢复注入 | 支持 | 支持 |
-| ChatGPT 本体 | 原版客户端，开启 CDP | 原版客户端，开启 CDP |
-
-## 常见问题
-
-**1. `App Server 启动失败: ENOENT`**
-
-Finder 或 Dock 启动的程序通常拿不到终端完整的 `PATH`。先在终端运行 `command -v codex`，再用 Launcher 的 **「选择 Codex…」** 指定该可执行文件，并重启监控。
-
-**2. 使用 Launcher 时提示组织设置无法加载，直接打开 ChatGPT 却正常**
-
-退出两个应用，更新代码并重新构建 Launcher。新版通过 `CSU_CODEX_CLI_PATH` 隔离额度助手自己的 Codex 路径，避免覆盖 ChatGPT 的 `CODEX_CLI_PATH`；ChatGPT 通过 macOS Launch Services 启动。**不要优先删除登录数据或重装客户端。**
-
-**3. 点击「停止监控」后一直显示「正在停止监控」**
-
-新版会在 SIGTERM 后立刻唤醒 Node 轮询，屏蔽停止过程中的迟到日志，并在收到进程结束通知后更新状态。等待超过保护时间仍未退出时会显示诊断提示，不会假称停止成功。
-
-**4. 没有显示额度组件**
-
-确认打开的是 ChatGPT 主窗口、可以看到 Codex 侧栏、端口 9238 可访问，并且没有多个助手进程争用。工具只会对 `app://-/index.html` 主渲染窗口注入，不会修改其他 WebView。
-
-**5. 额度和官方用量不同**
-
-先执行 `npm run probe`，与原生用量页面对照。不同 Codex CLI 可能使用另一个登录账号；服务端数据也可能有延迟。缺失的数据会显示 `--`，不会猜测。
-
-**6. 开机自动启动**
-
-旧的 `npm run login:install` 通过 LaunchAgent 开机启动，属于**实验功能**，不应与原生 Launcher 同时启用。它没有包含在此前的四项 macOS 实机恢复测试中。新原生 Launcher 的开机自启暂未作为正式交付功能。
-
-## 兼容性与验收
-
-v0.3 原生启动和重启恢复已在 2026-10-28 通过用户的 **4/4 项 macOS 实机测试**，ChatGPT 版本为 `26.1021.31345`。测试包括删除组件恢复、渲染器重载恢复、完全退出后双击重启、恢复后额度与刷新正确。详见[验收记录](docs/acceptance-v0.3.md)。
-
-**本次新增的点击浮窗、停止状态和新图标尚未进行 macOS 实机验收**，请在重新构建后核对。参见[更新记录](CHANGELOG.md)。
-
-## 安全与局限
-
-- CDP 是强大的本机调试能力，只应监听 `127.0.0.1`，不要绑定 `0.0.0.0` 或公开到局域网。
-- 额度数据通过本机 Codex App Server 的只读 `account/rateLimits/read` 获取。不复制登录文件、不提取 Token。
-- 注入渲染器的数据只有额度百分比和重置时间；点击浮窗不会发起其他网络请求。
-- 图标只在构建时使用本机 ChatGPT 图标，表明这是非官方辅助工具，并非 OpenAI 官方应用。
-- ChatGPT 客户端升级、登录环境变化、安装位置变化可能影响兼容性。
-
-[架构文档](docs/architecture.md) · [兼容性说明](docs/compatibility.md) · [更新日志](CHANGELOG.md)
+[技术架构](docs/architecture.md) · [兼容性说明](docs/compatibility.md) · [更新记录](CHANGELOG.md)
