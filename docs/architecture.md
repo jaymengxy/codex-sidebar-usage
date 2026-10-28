@@ -38,3 +38,11 @@ See [v0.3 acceptance](acceptance-v0.3.md). Four core macOS restart/recovery scen
 Out-of-scope or pending manual verification: legacy login LaunchAgent install/uninstall and login cycle, behavior when ChatGPT is already running without CDP, alternate application builds, older/newer macOS and full installer/notarization.
 
 Unsupported coupling to the current ChatGPT renderer means future DOM changes may break the component; there is no official supported UI plugin API.
+
+
+## v0.3.1 optional interaction and icon
+
+- The quota renderer appends one fixed-position reset-time panel to `document.body` so the 36px rail does not clip it. Clicking the same quota is idempotent; outside click, Escape, layout changes and widget destruction close the panel. No new network/API calls are introduced.
+- The Swift stop command sends SIGTERM only to the owned Node helper. Node immediately aborts its polling timeout and closes CDP/App Server. The launcher disables redundant clicks, ignores late log updates, and has a watchdog that checks the actual child process state before reporting stopped.
+- `macos/generate-icon.swift` reads the icon of **the user's installed** `/Applications/ChatGPT.app` via AppKit at build time. It draws two static colored bars and generates a local PNG. `scripts/build-macos-launcher.sh` uses `sips` and `iconutil` to create `Contents/Resources/AppIcon.icns` and signs the resulting bundle. No image assets from ChatGPT are committed; the bars do not reflect actual usage.
+- Bilingual entrypoints: `README.md` and `README.zh-CN.md`. Both cover Node CLI and native Swift Launcher.
