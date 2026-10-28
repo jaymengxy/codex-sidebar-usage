@@ -11,7 +11,13 @@ import { CDP_HOST, CDP_PORT, findMainTarget, localWebSocketUrl, WIDGET_PROBE, pr
 
 const bindingName = '__codexUsageFetchV02';
 const scriptPath = fileURLToPath(new URL('../src/sidebar.js', import.meta.url));
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+// SIGTERM must interrupt the poll delay immediately, not wait up to 3 seconds.
+const sleep = (ms, signal) => new Promise(resolve => {
+  if (signal.aborted) return resolve();
+  const onAbort = () => { clearTimeout(timer); resolve(); };
+  const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(); }, ms);
+  signal.addEventListener('abort', onAbort, { once: true });
+});
 
 class CdpSession {
   #socket;
@@ -96,7 +102,8 @@ export async function run(argv = process.argv.slice(2)) {
   let targetId = null;
   let inFlight = null;
   let stopping = false;
-  const stop = () => { stopping = true; session?.close(); app.close(); };
+  const stopSignal = new AbortController();
+  const stop = () => { if (stopping) return; stopping = true; stopSignal.abort(); session?.close(); app.close(); };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   try {
@@ -168,7 +175,7 @@ export async function run(argv = process.argv.slice(2)) {
         session?.close(); session = null; targetId = null;
         if (!stopping) logOnce(`CDP 暂不可用，稍后自动重试：${error.message}`);
       }
-      if (!stopping) await sleep(options.pollMs);
+      if (!stopping) await sleep(options.pollMs, stopSignal.signal);
     }
   } finally {
     stop();
