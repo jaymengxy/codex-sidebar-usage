@@ -46,3 +46,9 @@ No version compatibility guarantee is made for macOS ChatGPT updates. Document c
 ### GUI Codex lookup
 
 A macOS Dock/Finder launch might not inherit the interactive terminal's Node/Codex `PATH`. Before v0.3 fix, this could appear as `App Server 启动失败: ENOENT`. The v0.3 fix resolves absolute paths, embeds a build-time CLI location when available, provides native manual selection, and logs a specific missing-executable explanation. Verify on the user's macOS installation before marking native acceptance PASS.
+
+## Native launcher startup isolation
+
+- If ordinary ChatGPT launches but the older Swift Launcher shows an organization settings error, first isolate the CLI environment; do not remove authentication data.
+- This branch now uses private `CSU_CODEX_CLI_PATH` for quota reading and macOS Launch Services for ChatGPT.
+- Rebuild and reinstall the `.app` after pulling these changes. The CDP startup test and GUI behavior require macOS verification.
