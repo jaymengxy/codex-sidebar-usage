@@ -49,7 +49,7 @@ test('stop button enters a single pending state and ignores late connected logs'
 test('SIGTERM aborts the Node monitor poll without waiting for next timer', () => {
   assert.match(runner, /const stopSignal = new AbortController\(\)/);
   assert.match(runner, /stopSignal\.abort\(\)/);
-  assert.match(runner, /sleep\(options\.pollMs, stopSignal\.signal\)/);
+  assert.match(runner, /abortableSleep\(options\.pollMs, stopSignal\.signal\)/);
 });
 
 test('native icon builds from installed ChatGPT icon and never checks in source image', () => {
