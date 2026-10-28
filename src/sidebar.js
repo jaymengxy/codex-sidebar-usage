@@ -142,9 +142,9 @@
   window.addEventListener('scroll', onGeometryChange, true);
 
   const render = () => {
-    for (const [key, label, value] of [
-      ['five', '5 小时', snapshot?.fiveHour],
-      ['week', '每周', snapshot?.weekly],
+    for (const [key, value] of [
+      ['five', snapshot?.fiveHour],
+      ['week', snapshot?.weekly],
     ]) {
       const el = root.querySelector(`[data-quota="${key}"]`);
       const used = Number(value?.usedPercent);
@@ -152,7 +152,6 @@
       const remaining = valid ? Math.max(0, Math.min(100, 100 - used)) : null;
       el.querySelector('.pct').textContent = remaining === null ? '--' : `${Math.round(remaining)}%`;
       el.querySelector('.fill').style.width = remaining === null ? '0%' : `${remaining}%`;
-      const reset = valid ? formatReset(value.resetsAt) : '未提供';
       // Reset information is presented in the explicit click popover.
       // Avoid a second native title tooltip appearing on hover.
       el.removeAttribute('title');
