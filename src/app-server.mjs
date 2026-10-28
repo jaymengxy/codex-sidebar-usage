@@ -31,7 +31,8 @@ export async function resolveCodexCommand(explicitPath, options = {}) {
     bundled = DEFAULT_BUNDLED,
     isExecutable = executable,
   } = options;
-  const chosen = explicitPath || env.CODEX_CLI_PATH;
+  // Select only the quota helper CLI; never override ChatGPT's App Server.
+  const chosen = explicitPath || env.CSU_CODEX_CLI_PATH;
   if (chosen) {
     if (!isAbsolute(chosen) || !(await isExecutable(chosen))) {
       throw new Error(`Codex 可执行文件不可用：${chosen}。请在 Launcher 中选择正确的 Codex 文件（终端执行 command -v codex 可查询）。`);
@@ -77,9 +78,11 @@ export class CodexAppServer {
     const binDir = dirname(process.execPath);
     const runtimePath = [binDir, '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin',
       process.env.PATH || ''].filter(Boolean).join(delimiter);
+    const childEnv = { ...process.env, PATH: runtimePath };
+    delete childEnv.CODEX_CLI_PATH;
     this.#child = spawn(this.command, ['app-server', '--listen', 'stdio://'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, PATH: runtimePath },
+      env: childEnv,
     });
     const lines = createInterface({ input: this.#child.stdout });
     lines.on('line', line => {
