@@ -32,3 +32,20 @@ export function probeState(result) {
   const value = result?.result?.value;
   return ['waiting', 'ready', 'missing'].includes(value) ? value : 'waiting';
 }
+
+
+/**
+ * Delayed polling that wakes immediately when the helper receives SIGTERM.
+ * Resolves (never rejects) on timeout or abort and removes its listener.
+ */
+export function abortableSleep(ms, signal) {
+  return new Promise(resolve => {
+    if (signal.aborted) { resolve(); return; }
+    const onAbort = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
