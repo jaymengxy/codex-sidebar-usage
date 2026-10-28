@@ -14,6 +14,8 @@ const zh = await readFile(new URL('../README.zh-CN.md', import.meta.url), 'utf8'
 test('quota hover uses normal cursor, never question-mark help cursor', () => {
   assert.match(sidebar, /\.quota\{[^}]*cursor:default/);
   assert.doesNotMatch(sidebar, /cursor:help/);
+  assert.match(sidebar, /el\.removeAttribute\('title'\)/);
+  assert.doesNotMatch(sidebar, /data-quota="five" title=/);
 });
 
 test('clicking same quota does not duplicate the reset-time popover', () => {
