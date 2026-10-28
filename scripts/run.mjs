@@ -1,41 +1,31 @@
 #!/usr/bin/env node
 /**
- * Runs a local, read-only quota bridge: Codex App Server JSON-RPC <-> local CDP.
- * No HTTP listener, injected credentials, third-party packages, or app changes.
- * Keep this foreground process alive to enable the refresh button/hover polling.
+ * v0.3 persistent read-only Codex quota bridge.
+ * Reconnects after CDP renderer reload, app restart and target replacement.
+ * Does not start the ChatGPT app; scripts/launch.mjs does that optionally.
  */
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { CodexAppServer, resolveCodexCommand } from '../src/app-server.mjs';
+import { CDP_HOST, CDP_PORT, findMainTarget, localWebSocketUrl, WIDGET_PROBE, probeState } from '../src/monitor-utils.mjs';
 
-const HOST = '127.0.0.1';
-const PORT = 9238;
 const bindingName = '__codexUsageFetchV02';
 const scriptPath = fileURLToPath(new URL('../src/sidebar.js', import.meta.url));
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 class CdpSession {
   #socket;
   #sequence = 0;
   #pending = new Map();
   onBinding = null;
-  onClose = null;
-  #closing = false;
+  closed = false;
 
-  async connect() {
-    const response = await fetch(`http://${HOST}:${PORT}/json/list`, { signal: AbortSignal.timeout(4000) });
-    if (!response.ok) throw new Error(`CDP 发现失败: HTTP ${response.status}`);
-    const targets = await response.json();
-    const main = targets.find(t => t.type === 'page' && t.url === 'app://-/index.html');
-    if (!main?.webSocketDebuggerUrl) throw new Error('未找到 ChatGPT 主窗口 app://-/index.html');
-    const endpoint = new URL(main.webSocketDebuggerUrl);
-    if (endpoint.protocol !== 'ws:' || endpoint.hostname !== HOST || Number(endpoint.port) !== PORT) {
-      throw new Error('拒绝连接非本机 CDP 地址');
-    }
-    this.#socket = new WebSocket(endpoint);
+  async connect(url) {
+    this.#socket = new WebSocket(url);
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('CDP 连接超时')), 5000);
       this.#socket.addEventListener('open', () => { clearTimeout(timer); resolve(); }, { once: true });
-      this.#socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('CDP WebSocket 连接失败')); }, { once: true });
+      this.#socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('CDP 连接失败')); }, { once: true });
     });
     this.#socket.addEventListener('message', event => {
       let message;
@@ -45,23 +35,22 @@ class CdpSession {
         this.#pending.delete(message.id);
         clearTimeout(entry.timer);
         if (message.error || message.result?.exceptionDetails) {
-          entry.reject(new Error(`CDP 执行失败: ${message.error?.message ?? message.result?.exceptionDetails?.text ?? '未知错误'}`));
+          entry.reject(new Error(message.error?.message ?? message.result?.exceptionDetails?.text ?? 'CDP 执行失败'));
         } else entry.resolve(message.result);
-        return;
-      }
-      if (message.method === 'Runtime.bindingCalled' && message.params?.name === bindingName) {
+      } else if (message.method === 'Runtime.bindingCalled' && message.params?.name === bindingName) {
         this.onBinding?.(message.params.payload);
       }
     });
     this.#socket.addEventListener('close', () => {
-      for (const [, entry] of this.#pending) { clearTimeout(entry.timer); entry.reject(new Error('CDP 连接已关闭')); }
+      this.closed = true;
+      for (const [, entry] of this.#pending) { clearTimeout(entry.timer); entry.reject(new Error('CDP 已断开')); }
       this.#pending.clear();
-      if (!this.#closing) this.onClose?.(new Error('CDP 已断开；请重新运行 npm start'));
     });
+    this.#socket.addEventListener('error', () => { this.closed = true; });
   }
 
   call(method, params = {}) {
-    if (this.#socket?.readyState !== WebSocket.OPEN) return Promise.reject(new Error('CDP 未连接'));
+    if (this.closed || this.#socket?.readyState !== WebSocket.OPEN) return Promise.reject(new Error('CDP 未连接'));
     const id = ++this.#sequence;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.#pending.delete(id); reject(new Error(`CDP ${method} 超时`)); }, 5000);
@@ -70,75 +59,124 @@ class CdpSession {
     });
   }
 
-  close() { this.#closing = true; this.#socket?.close(); }
-}
-
-function options(argv) {
-  let once = false;
-  let codexPath;
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--once') once = true;
-    else if (argv[i] === '--codex-path') codexPath = argv[++i];
-    else if (argv[i] === '--help') {
-      console.log('Usage: npm start [-- --once] [-- --codex-path /path/to/codex]\n  --once: read only, no CDP injection.');
-      process.exit(0);
-    } else throw new Error(`未知参数: ${argv[i]}`);
+  close() {
+    this.closed = true;
+    this.#socket?.close();
   }
-  if (codexPath === undefined && argv.includes('--codex-path')) throw new Error('--codex-path 缺少路径');
-  return { once, codexPath };
 }
 
-async function main() {
-  const { once, codexPath } = options(process.argv.slice(2));
-  const command = await resolveCodexCommand(codexPath);
+export function parseArguments(argv) {
+  const options = { once: false, pollMs: 3000 };
+  for (let i = 0; i < argv.length; i++) {
+    const item = argv[i];
+    if (item === '--once') options.once = true;
+    else if (item === '--codex-path') {
+      options.codexPath = argv[++i];
+      if (!options.codexPath) throw new Error('--codex-path 缺少路径');
+    } else if (item === '--poll-ms') {
+      options.pollMs = Number(argv[++i]);
+      if (!Number.isInteger(options.pollMs) || options.pollMs < 1000 || options.pollMs > 60000) {
+        throw new Error('--poll-ms 范围必须是 1000–60000');
+      }
+    } else if (item === '--help') options.help = true;
+    else throw new Error(`未知参数: ${item}`);
+  }
+  return options;
+}
+
+export async function run(argv = process.argv.slice(2)) {
+  const options = parseArguments(argv);
+  if (options.help) {
+    console.log('Usage: node scripts/run.mjs [--once] [--codex-path /absolute/path] [--poll-ms 3000]');
+    return;
+  }
+  const command = await resolveCodexCommand(options.codexPath);
   const app = new CodexAppServer(command);
-  let cdp;
-  let inFlight;
-  let finish;
-  const lifespan = new Promise((resolve, reject) => { finish = { resolve, reject }; });
-  const shutdown = () => { cdp?.close(); app.close(); };
-  process.once('SIGINT', () => { shutdown(); process.exit(0); });
-  process.once('SIGTERM', () => { shutdown(); process.exit(0); });
+  let session = null;
+  let targetId = null;
+  let inFlight = null;
+  let stopping = false;
+  const stop = () => { stopping = true; session?.close(); app.close(); };
+  process.once('SIGINT', stop);
+  process.once('SIGTERM', stop);
   try {
     await app.start();
-    if (once) {
+    if (options.once) {
       const data = await app.readLimits();
-      for (const [label, value] of [['5h', data.fiveHour], ['7d', data.weekly]]) {
-        console.log(`${label}: ${value ? `${Math.round(100 - value.usedPercent)}% 剩余` : '未返回'}`);
+      for (const [name, value] of [['5h', data.fiveHour], ['7d', data.weekly]]) {
+        console.log(`${name}: ${value ? `${Math.round(100 - value.usedPercent)}% 剩余` : '未返回'}`);
       }
-      console.log('请与 ChatGPT 客户端的剩余用量页面核对，确认是同一账户。');
+      console.log('务必与 ChatGPT 原生额度页面对照，排除账号不一致。');
       return;
     }
-    cdp = new CdpSession();
-    cdp.onClose = error => finish.reject(error);
-    await cdp.connect();
-    await cdp.call('Runtime.enable');
-    await cdp.call('Runtime.addBinding', { name: bindingName });
-    cdp.onBinding = async payload => {
-      let request;
-      try { request = JSON.parse(payload); } catch { return; }
-      if (request?.action !== 'read' || typeof request.id !== 'string' || !/^request-\d{1,8}$/.test(request.id)) return;
-      const respond = async response => {
-        const js = `globalThis.__codexUsageSidebarV02?.receive(${JSON.stringify(response)})`;
-        await cdp.call('Runtime.evaluate', { expression: js });
-      };
-      try {
-        // Share an in-flight request; the renderer also prevents duplicate calls.
-        inFlight ??= app.readLimits().finally(() => { inFlight = null; });
-        const data = await inFlight;
-        await respond({ id: request.id, data });
-      } catch (error) {
-        try { await respond({ id: request.id, error: error.message || '额度读取失败' }); } catch { /* disconnected */ }
-      }
-    };
     const source = await readFile(scriptPath, 'utf8');
-    await cdp.call('Runtime.evaluate', { expression: source, returnByValue: true });
-    console.log('v0.2 已注入：保持本进程运行以支持自动、悬停及手动刷新。Ctrl+C 退出。');
-    console.log('请将 5h / 7d 数字与 ChatGPT 原生用量页核对；不一致时先停止使用。');
-    await lifespan;
+    console.log('Codex Sidebar Usage v0.3：监视 CDP；Ctrl+C 停止。');
+    let lastLog = '';
+    const logOnce = message => {
+      if (message !== lastLog) { console.log(message); lastLog = message; }
+    };
+    while (!stopping) {
+      try {
+        const response = await fetch(`http://${CDP_HOST}:${CDP_PORT}/json/list`, {
+          signal: AbortSignal.timeout(2000),
+        });
+        if (!response.ok) throw new Error(`CDP HTTP ${response.status}`);
+        const target = findMainTarget(await response.json());
+        if (!target?.webSocketDebuggerUrl) {
+          session?.close(); session = null; targetId = null;
+          logOnce('等待 ChatGPT 主窗口 / Codex 导航栏出现…');
+        } else {
+          const url = localWebSocketUrl(target.webSocketDebuggerUrl);
+          if (!session || session.closed || target.id !== targetId) {
+            session?.close();
+            session = new CdpSession();
+            await session.connect(url);
+            targetId = target.id;
+            await session.call('Runtime.enable');
+            await session.call('Runtime.addBinding', { name: bindingName });
+            const active = session;
+            active.onBinding = async payload => {
+              let request;
+              try { request = JSON.parse(payload); } catch { return; }
+              if (request?.action !== 'read' || typeof request.id !== 'string' ||
+                  !/^request-\d{1,8}$/.test(request.id)) return;
+              const respond = async data => {
+                const js = `globalThis.__codexUsageSidebarV02?.receive(${JSON.stringify(data)})`;
+                await active.call('Runtime.evaluate', { expression: js });
+              };
+              try {
+                inFlight ??= app.readLimits().finally(() => { inFlight = null; });
+                await respond({ id: request.id, data: await inFlight });
+              } catch (error) {
+                try { await respond({ id: request.id, error: String(error.message ?? '额度读取失败') }); }
+                catch { /* target replaced */ }
+              }
+            };
+            logOnce('已连接 ChatGPT 主窗口，监控重新渲染和重启。');
+          }
+          const probe = probeState(await session.call('Runtime.evaluate', {
+            expression: WIDGET_PROBE, returnByValue: true,
+          }));
+          if (probe === 'missing') {
+            await session.call('Runtime.evaluate', { expression: source, returnByValue: true });
+            logOnce('额度组件已注入或恢复。');
+          } else if (probe === 'waiting') {
+            logOnce('等待 Codex 侧栏 DOM 渲染…');
+          }
+        }
+      } catch (error) {
+        session?.close(); session = null; targetId = null;
+        if (!stopping) logOnce(`CDP 暂不可用，稍后自动重试：${error.message}`);
+      }
+      if (!stopping) await sleep(options.pollMs);
+    }
   } finally {
-    shutdown();
+    stop();
+    process.removeListener('SIGINT', stop);
+    process.removeListener('SIGTERM', stop);
   }
 }
 
-main().catch(error => { console.error('启动失败:', error.message); process.exitCode = 1; });
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  run().catch(error => { console.error('运行失败:', error.message); process.exitCode = 1; });
+}

@@ -1,36 +1,43 @@
-# Architecture (v0.2 candidate)
+# Architecture: v0.3 development
 
 ```text
-ChatGPT.app signed UI (52px rail)
-        ↑ CDP Runtime.evaluate (quota values only)
-Node.js scripts/run.mjs (127.0.0.1:9238)
-        ↓ JSONL over process stdio
-Local bundled Codex App Server
-        ↓ account/rateLimits/read (existing authenticated account)
-OpenAI quota snapshot
+macOS login (optional)
+  └─ LaunchAgent `dev.paperauk.codex-sidebar-usage` (user only)
+       └─ scripts/launch.mjs
+            ├─ checks loopback CDP; never force-quits ChatGPT
+            ├─ starts ChatGPT with loopback CDP if not already running
+            └─ scripts/run.mjs (reconnection monitor)
+                 ├─ `GET /json/list` @ 127.0.0.1:9238 every ~3 seconds
+                 ├─ validates app://-/index.html target and loopback ws URL
+                 ├─ CDP Runtime.addBinding + Runtime.evaluate
+                 ├─ restores widget if missing after renderer/DOM replacement
+                 └─ Codex App Server JSON-RPC stdio
+                     └─ account/rateLimits/read (read-only)
 ```
 
-- Renderer `src/sidebar.js` is an ephemeral, 36px-wide component attached to the avatar's `NAV` direct child, as confirmed by user DOM inspection. It contains a CDP `Runtime.addBinding` callback to request only a quota read; the renderer does not access auth or make network requests.
-- `src/app-server.mjs` starts a local child Codex process, performs JSON-RPC handshake (`initialize`, `initialized`), sends `account/rateLimits/read`. It does not read authentication files.
-- `src/rate-limits.mjs` classifies snapshots strictly by `windowDurationMins` = 300 and 10080, regardless of slot order.
-- The `scripts/run.mjs` helper keeps the local CDP binding and App Server process active. No HTTP server is exposed; it only connects to localhost CDP.
-- UI always shows remaining percent (`100 - usedPercent`), reset timestamp, local last-success time; missing windows show `--`. On a read error it retains the prior snapshot, marked stale.
-- A backend snapshot can lag real usage; there is no guarantee of live counters.
+## Boundaries
 
-## 0.2 acceptance checklist (pending Mac testing)
+- `src/monitor-utils.mjs` identifies only the main Codex renderer, rejecting webviews, avatar overlays, remote/non-loopback websocket addresses.
+- `scripts/run.mjs` has one CDP session at a time, monitors `Runtime.evaluate` widget presence, retries a missing target/connection, and shares in-flight quota reads. It does not create a local network server.
+- `scripts/launch.mjs` launches signed `/Applications/ChatGPT.app/Contents/MacOS/ChatGPT` with loopback CDP only when CDP absent and no ChatGPT process exists. This is intentional: silently killing or spawning duplicates would be intrusive.
+- `scripts/login-item.mjs` writes a single user LaunchAgent and logs under `~/Library/Logs/CodexSidebarUsage`. Install/uninstall are *explicit*. It writes no system LaunchDaemon and never requires sudo.
+- `src/sidebar.js` remains the already tested 36px quota UI, green/orange bars and hover/manual/automatic refresh. It exposes a `receive` method for its local CDP binding, but no network calls.
+- Authentication is owned by Codex App Server. This project does not inspect `~/.codex/auth.json` or inject tokens into the renderer.
 
-- [ ] `npm run probe` produces 5h/7d values matching the ChatGPT Usage page for the active account (allow backend reporting lag).
-- [ ] `npm start` inserts the component above avatar, preserving 52px rail and avatar click.
-- [ ] No content overlap when ChatGPT window is short, light and dark themes render.
-- [ ] Hover tooltip shows absolute reset time; hover after 60s triggers another request.
-- [ ] Manual click refreshes, with 10s cooldown, and does not double-fetch.
-- [ ] Automatic refresh every 120s and stale-on-error behave as expected.
-- [ ] `Ctrl+C` stops local helper; reload and re-run restores the widget.
-- [ ] Signed-in mismatch or missing quota window is handled clearly.
+## Acceptance gates
 
-## Known constraints
+- [x] Unit and syntax tests for target detection, URL safeguards, launcher no-kill behavior, plist XML escaping, quota mapping and colors.
+- [ ] `npm run launch` from all-apps-closed state opens ChatGPT with active CDP and injects the widget.
+- [ ] App renderer reload destroys previous widget and the monitor restores it.
+- [ ] App window replacement returns to an exactly-one-widget state.
+- [ ] An already-running non-CDP ChatGPT is left untouched, with an actionable error.
+- [ ] Manual, hover and 120s refresh work after a renderer reattach.
+- [ ] `login:install` takes effect at login; `login:uninstall` removes only our helper, preserving ChatGPT settings.
+- [ ] Run under light/dark and narrow/short windows without overlapping native controls.
 
-- A running shell helper is required for refresh; `npm run inject-layout` is for layout-only testing.
-- This version does not automatically reconnect after renderer reload. That is future work.
-- A normal child app-server might use a different `CODEX_HOME` or account than the UI; user must compare the read-only probe.
-- This relies on unsupported CDP injection, not an OpenAI plugin API.
+## Known limitations
+
+- If the user relaunches ChatGPT without CDP after quitting, the monitor cannot inject: use `npm run launch` with the ordinary app closed.
+- If the app-server child exits, current release may require helper restart to restore quota reads.
+- The LaunchAgent does not auto-restart on helper crash, to avoid login crash loops.
+- DOM classes/selector may change in future app versions; these are not official extension hooks.
