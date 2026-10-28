@@ -12,8 +12,8 @@ test('prefers explicitly selected Codex CLI over all other locations', async () 
   assert.equal(await resolveCodexCommand('/custom/bin/codex', options), '/custom/bin/codex');
 });
 
-test('GUI-configured CODEX_CLI_PATH works with an empty PATH', async () => {
-  const options = make({ existing: ['/Users/example/custom/codex'], env: {CODEX_CLI_PATH:'/Users/example/custom/codex'} });
+test('GUI-configured CSU_CODEX_CLI_PATH works with an empty PATH', async () => {
+  const options = make({ existing: ['/Users/example/custom/codex'], env: {CSU_CODEX_CLI_PATH:'/Users/example/custom/codex'} });
   assert.equal(await resolveCodexCommand(undefined, options), '/Users/example/custom/codex');
 });
 
@@ -43,11 +43,17 @@ test('invalid explicit CLI fails with a path-specific error', async () => {
   await assert.rejects(resolveCodexCommand('/missing/codex', options), /Codex 可执行文件不可用：\/missing\/codex/);
 });
 
-test('a nonabsolute CODEX_CLI_PATH is rejected rather than spawned', async () => {
-  const options = make({env: {CODEX_CLI_PATH:'codex'}});
+test('a nonabsolute CSU_CODEX_CLI_PATH is rejected rather than spawned', async () => {
+  const options = make({env: {CSU_CODEX_CLI_PATH:'codex'}});
   await assert.rejects(resolveCodexCommand(undefined, options), /Codex 可执行文件不可用：codex/);
 });
 
 test('unavailable Codex CLI reports actionable instructions instead of ENOENT', async () => {
   await assert.rejects(resolveCodexCommand(undefined, make()), /command -v codex/);
+});
+
+test('global CODEX_CLI_PATH never selects the quota helper', async () => {
+  const opts = make({env:{CODEX_CLI_PATH:'/incompatible/codex'},
+    existing:['/Applications/ChatGPT.app/Contents/Resources/codex']});
+  assert.equal(await resolveCodexCommand(undefined,opts),'/Applications/ChatGPT.app/Contents/Resources/codex');
 });
