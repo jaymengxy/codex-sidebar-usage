@@ -1,167 +1,169 @@
 /*
- * Codex / ChatGPT Sidebar Usage — placement prototype
- * Built for the supplied DOM hierarchy from ChatGPT 26.1021.31345;
- * the integrated widget is NOT yet confirmed on the user's device.
- * Run through DevTools Console or scripts/inject.mjs.
- * Does not fetch account information or modify app files.
+ * Codex Sidebar Usage v0.2 — ephemeral local CDP renderer widget.
+ * Fetches no credentials and makes no HTTP calls. Node's CDP binding delivers
+ * account/rateLimits/read normalized quota snapshots from Codex App Server.
  */
 (() => {
-  const WIDGET_ID = "codex-sidebar-usage-prototype";
-  const previous = window.__codexUsageSidebarPrototype;
-  if (previous?.destroy) previous.destroy();
-
-  // Prefer DevTools' selected avatar when available, but also support
-  // unattended injection through the CDP launcher (where $0 is unavailable).
-  const selected = typeof $0 !== "undefined" ? $0 : null;
-  const selectedButton = selected instanceof Element ? selected.closest("button") : null;
-  const selectedNav = selectedButton?.closest("nav");
-  const isRail = node => node?.tagName === "NAV" &&
-    String(node.className).includes("group/sidebar-rail");
-  const nav = isRail(selectedNav) ? selectedNav :
-    [...document.querySelectorAll("nav")].find(isRail);
-  if (!nav) {
-    console.warn("Sidebar rail was not found. No changes made.");
-    return;
-  }
-  const avatarImage = [...nav.querySelectorAll("img")].find(img =>
-    img.classList.contains("rounded-full") &&
-    img.classList.contains("object-cover") &&
-    Math.round(img.getBoundingClientRect().width) === 24);
-  const button = isRail(selectedNav) && selectedButton ? selectedButton :
-    avatarImage?.closest("button");
-  if (!button || !nav.contains(button)) {
-    console.warn("Avatar button was not found in the sidebar rail. No changes made.");
-    return;
-  }
-
-  // Find the avatar's direct child inside the 52px sidebar navigation rail.
+  const WIDGET_ID = 'codex-sidebar-usage-widget';
+  window.__codexUsageSidebarV02?.destroy?.();
+  window.__codexUsageSidebarPrototype?.destroy?.();
+  const isRail = el => el?.tagName === 'NAV' && String(el.className).includes('group/sidebar-rail');
+  const nav = [...document.querySelectorAll('nav')].find(isRail);
+  if (!nav) { console.warn('Codex usage: rail unavailable'); return; }
+  const avatarImage = [...nav.querySelectorAll('img')].find(el =>
+    el.classList.contains('rounded-full') &&
+    el.classList.contains('object-cover') &&
+    Math.round(el.getBoundingClientRect().width) === 24);
+  const button = avatarImage?.closest('button');
+  if (!button) { console.warn('Codex usage: avatar unavailable'); return; }
   let anchor = button;
-  while (anchor?.parentElement && anchor.parentElement !== nav) {
-    anchor = anchor.parentElement;
-  }
-  if (!anchor || anchor.parentElement !== nav) {
-    console.warn("Could not locate the avatar anchor in the sidebar rail.");
-    return;
-  }
+  while (anchor?.parentElement && anchor.parentElement !== nav) anchor = anchor.parentElement;
+  if (anchor?.parentElement !== nav) { console.warn('Codex usage: avatar anchor unavailable'); return; }
 
   document.getElementById(WIDGET_ID)?.remove();
-  const root = document.createElement("div");
+  const root = document.createElement('div');
   root.id = WIDGET_ID;
-  root.setAttribute("aria-label", "Codex usage quotas");
-  root.style.cssText = [
-    "box-sizing:border-box",
-    "width:36px",
-    "max-width:36px",
-    "flex:0 0 auto",
-    "align-self:center",
-    "display:flex",
-    "flex-direction:column",
-    "align-items:center",
-    "gap:8px",
-    "color:inherit",
-    "margin:0",
-    "padding:0"
-  ].join(";");
+  root.setAttribute('aria-label', 'Codex 使用额度');
+  root.style.cssText = 'box-sizing:border-box;width:36px;max-width:36px;flex:0 0 auto;align-self:center;display:flex;flex-direction:column;align-items:center;gap:8px;color:inherit;';
   root.innerHTML = `
     <style>
-      #${WIDGET_ID} .quota { width:36px; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:default; }
-      #${WIDGET_ID} .label { font-size:9px; line-height:11px; opacity:.7; }
-      #${WIDGET_ID} .pct { font-size:11px; line-height:13px; font-weight:600; font-variant-numeric:tabular-nums; }
-      #${WIDGET_ID} .track { width:32px; height:3px; border-radius:9px; background:color-mix(in srgb, currentColor 18%, transparent); position:relative; overflow:hidden; }
-      #${WIDGET_ID} .fill { position:absolute; top:0; left:0; height:100%; width:0%; border-radius:9px; opacity:1; }
-      #${WIDGET_ID} [data-quota="five"] .fill { background:#16a34a; }
-      #${WIDGET_ID} [data-quota="week"] .fill { background:#d97706; }
-      #${WIDGET_ID} .reload { width:26px; height:24px; display:grid; place-items:center; padding:0; border:0; border-radius:7px; color:inherit; background:transparent; font-size:16px; line-height:1; }
-      #${WIDGET_ID} .reload:not(:disabled) { cursor:pointer; }
-      #${WIDGET_ID} .reload:hover:not(:disabled) { background:color-mix(in srgb, currentColor 9%, transparent); }
-      #${WIDGET_ID} .reload:disabled { cursor:not-allowed; opacity:.3; }
+      #${WIDGET_ID} .quota{width:36px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:help}
+      #${WIDGET_ID} .label{font-size:9px;line-height:11px;opacity:.7}
+      #${WIDGET_ID} .pct{font-size:11px;line-height:13px;font-weight:600;font-variant-numeric:tabular-nums}
+      #${WIDGET_ID} .track{display:block;flex:0 0 auto;position:relative;width:32px;height:3px;border-radius:9px;background:color-mix(in srgb,currentColor 18%,transparent);overflow:hidden}
+      #${WIDGET_ID} .fill{display:block;position:absolute;top:0;left:0;height:100%;width:0%;border-radius:9px}
+      #${WIDGET_ID} [data-quota="five"] .fill{background:#16a34a}
+      #${WIDGET_ID} [data-quota="week"] .fill{background:#d97706}
+      #${WIDGET_ID} .reload{width:26px;height:24px;display:grid;place-items:center;padding:0;border:0;border-radius:7px;color:inherit;background:transparent;font-size:16px;line-height:1;cursor:pointer}
+      #${WIDGET_ID} .reload:hover{background:color-mix(in srgb,currentColor 9%,transparent)}
+      #${WIDGET_ID} .reload:disabled{cursor:wait;opacity:.5}
     </style>
-    <div class="quota" data-quota="five" title="尚未连接额度数据">
-      <span class="label">5h</span><span class="pct">--</span>
-      <span class="track"><span class="fill"></span></span>
-    </div>
-    <div class="quota" data-quota="week" title="尚未连接额度数据">
-      <span class="label">7d</span><span class="pct">--</span>
-      <span class="track"><span class="fill"></span></span>
-    </div>
-    <button class="reload" aria-label="刷新额度" title="尚未连接额度数据" disabled>↻</button>
+    <div class="quota" data-quota="five" title="正在读取额度"><span class="label">5h</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
+    <div class="quota" data-quota="week" title="正在读取额度"><span class="label">7d</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
+    <button type="button" class="reload" aria-label="刷新额度" title="点击刷新额度">↻</button>
   `;
   nav.insertBefore(root, anchor);
 
-  const reloadButton = root.querySelector(".reload");
-  let fetcher = null;
+  const refreshButton = root.querySelector('.reload');
+  const outstanding = new Map();
+  let nextId = 0;
   let busy = false;
+  let destroyed = false;
   let lastAttempt = 0;
   let lastSuccess = 0;
-  const normalizeTime = t => {
-    if (t == null) return null;
-    const n = Number(t);
-    const date = Number.isFinite(n) ? new Date(n < 1e12 ? n * 1000 : n) : new Date(t);
-    return Number.isNaN(date.getTime()) ? null : date;
+  let snapshot = null;
+  let stale = false;
+
+  const formatReset = value => {
+    if (value == null || !Number.isFinite(Number(value))) return '未提供';
+    const date = new Date(Number(value) * 1000);
+    return Number.isNaN(date.getTime()) ? '未提供' : date.toLocaleString();
   };
-  const renderWindow = (key, label, data) => {
-    const element = root.querySelector(`[data-quota="${key}"]`);
-    const used = Number(data?.usedPercent ?? data?.used_percent);
-    if (!data || !Number.isFinite(used)) {
-      element.querySelector(".pct").textContent = "--";
-      element.querySelector(".fill").style.width = "0%";
-      element.title = `${label}：暂无真实额度数据`;
+  const render = () => {
+    for (const [key, label, value] of [
+      ['five', '5 小时', snapshot?.fiveHour],
+      ['week', '每周', snapshot?.weekly],
+    ]) {
+      const el = root.querySelector(`[data-quota="${key}"]`);
+      const used = Number(value?.usedPercent);
+      const valid = value != null && Number.isFinite(used) && used >= 0 && used <= 100;
+      const remaining = valid ? Math.max(0, Math.min(100, 100 - used)) : null;
+      el.querySelector('.pct').textContent = remaining === null ? '--' : `${Math.round(remaining)}%`;
+      el.querySelector('.fill').style.width = remaining === null ? '0%' : `${remaining}%`;
+      const reset = valid ? formatReset(value.resetsAt) : '未提供';
+      el.title = `${label}额度：${remaining === null ? '暂无数据' : `${Math.round(remaining)}% 剩余`}` +
+        `\n重置时间：${reset}` +
+        `\n最近成功更新：${lastSuccess ? new Date(lastSuccess).toLocaleTimeString() : '尚未更新'}` +
+        (stale ? '\n⚠ 读取失败，显示上次缓存的数据' : '');
+    }
+    refreshButton.title = (busy ? '正在刷新额度' : '点击立即刷新额度') +
+      (stale ? '\n上次更新失败' : '') +
+      (lastSuccess ? `\n最近更新：${new Date(lastSuccess).toLocaleTimeString()}` : '');
+  };
+
+  const askNative = () => new Promise((resolve, reject) => {
+    if (typeof window.__codexUsageFetchV02 !== 'function') {
+      reject(new Error('本地额度读取桥接未连接'));
       return;
     }
-    const remaining = Math.max(0, Math.min(100, 100 - used));
-    element.querySelector(".pct").textContent = `${Math.round(remaining)}%`;
-    element.querySelector(".fill").style.width = `${remaining}%`;
-    const reset = normalizeTime(data.resetsAt ?? data.reset_at);
-    element.title = `${label}剩余 ${Math.round(remaining)}%` +
-      (reset ? `\n重置：${reset.toLocaleString()}` : "\n重置时间暂不可用") +
-      `\n更新：${new Date().toLocaleTimeString()}`;
-  };
-  const update = data => {
-    renderWindow("five", "5 小时额度", data?.fiveHour ?? data?.five_hour);
-    renderWindow("week", "每周额度", data?.weekly ?? data?.week);
-    lastSuccess = Date.now();
-  };
-  const refresh = async (manual = false) => {
-    if (!fetcher || busy) return;
+    const id = `request-${++nextId}`;
+    const timer = setTimeout(() => {
+      outstanding.delete(id);
+      reject(new Error('读取额度超时'));
+    }, 16000);
+    outstanding.set(id, { resolve, reject, timer });
+    try { window.__codexUsageFetchV02(JSON.stringify({ id, action: 'read' })); }
+    catch (error) {
+      clearTimeout(timer);
+      outstanding.delete(id);
+      reject(error);
+    }
+  });
+
+  const refresh = async reason => {
+    if (busy || destroyed) return;
     const now = Date.now();
-    if (now - lastAttempt < (manual ? 10_000 : 60_000)) return;
+    if (reason === 'hover' && now - lastSuccess < 60000) return;
+    if (reason === 'auto' && now - lastAttempt < 120000) return;
+    if (reason === 'manual' && now - lastAttempt < 10000) return;
+    if (reason === 'hover' && now - lastAttempt < 60000) return;
     lastAttempt = now;
     busy = true;
-    reloadButton.textContent = "…";
-    reloadButton.title = "正在更新额度";
+    refreshButton.disabled = true;
+    refreshButton.textContent = '…';
+    render();
     try {
-      const data = await fetcher();
-      update(data);
-      reloadButton.title = `刷新额度（最近更新 ${new Date(lastSuccess).toLocaleTimeString()}）`;
+      const data = await askNative();
+      if (destroyed) return;
+      if (!data || typeof data !== 'object') throw new Error('额度响应格式错误');
+      snapshot = data;
+      stale = false;
+      lastSuccess = Date.now();
     } catch (error) {
-      reloadButton.title = "更新失败，保留上次额度；请检查本地额度服务";
-      console.warn("Usage refresh failed:", error);
+      if (destroyed) return;
+      stale = true;
+      console.warn('Codex usage: read failed:', error?.message || error);
     } finally {
-      busy = false;
-      reloadButton.textContent = "↻";
+      if (!destroyed) {
+        busy = false;
+        refreshButton.disabled = false;
+        refreshButton.textContent = '↻';
+        render();
+      }
     }
   };
-  const onClick = () => refresh(true);
-  const onHover = () => refresh(false);
-  reloadButton.addEventListener("click", onClick);
-  root.addEventListener("mouseenter", onHover);
 
-  window.__codexUsageSidebarPrototype = {
-    // Accepts {fiveHour:{usedPercent:38,resetsAt:<unix seconds>},weekly:{...}}
-    update,
-    setFetcher(fn) {
-      if (typeof fn !== "function") throw new TypeError("Expected an async fetch function");
-      fetcher = fn;
-      reloadButton.disabled = false;
-      reloadButton.title = "刷新额度";
-      void refresh(true);
+  const onClick = () => void refresh('manual');
+  const onHover = () => void refresh('hover');
+  refreshButton.addEventListener('click', onClick);
+  root.addEventListener('mouseenter', onHover);
+  const timer = setInterval(() => void refresh('auto'), 120000);
+  const controller = {
+    receive(payload) {
+      const { id, data, error } = payload || {};
+      const entry = outstanding.get(id);
+      if (!entry) return;
+      outstanding.delete(id);
+      clearTimeout(entry.timer);
+      error ? entry.reject(new Error(String(error))) : entry.resolve(data);
     },
+    refresh() { return refresh('manual'); },
     destroy() {
-      reloadButton.removeEventListener("click", onClick);
-      root.removeEventListener("mouseenter", onHover);
+      destroyed = true;
+      clearInterval(timer);
+      refreshButton.removeEventListener('click', onClick);
+      root.removeEventListener('mouseenter', onHover);
+      for (const [, entry] of outstanding) {
+        clearTimeout(entry.timer);
+        entry.reject(new Error('额度组件已关闭'));
+      }
+      outstanding.clear();
       root.remove();
-      if (window.__codexUsageSidebarPrototype === this) delete window.__codexUsageSidebarPrototype;
-    }
+      if (window.__codexUsageSidebarV02 === controller) delete window.__codexUsageSidebarV02;
+    },
   };
-  console.log("Codex usage widget mounted above account avatar. Data is NOT connected yet.");
+  window.__codexUsageSidebarV02 = controller;
+  render();
+  void refresh('initial');
+  console.log('Codex usage sidebar v0.2 mounted; waiting for local App Server.');
 })();

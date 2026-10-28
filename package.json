@@ -1,12 +1,18 @@
 {
   "name": "codex-sidebar-usage",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Experimental compact usage indicator for the ChatGPT macOS Codex sidebar",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "inject": "node scripts/inject.mjs",
-    "check": "node --check src/sidebar.js && node --check scripts/inject.mjs"
+    "start": "node scripts/run.mjs",
+    "probe": "node scripts/run.mjs --once",
+    "inject-layout": "node scripts/inject.mjs",
+    "check": "node --check src/sidebar.js && node --check src/rate-limits.mjs && node --check src/app-server.mjs && node --check scripts/run.mjs && node --check scripts/inject.mjs",
+    "test": "node --test test/*.test.mjs",
+    "inject": "node scripts/inject.mjs"
   }
 }

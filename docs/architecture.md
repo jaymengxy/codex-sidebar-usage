@@ -1,27 +1,36 @@
-# Architecture and acceptance plan
+# Architecture (v0.2 candidate)
 
-## Architecture
+```text
+ChatGPT.app signed UI (52px rail)
+        ↑ CDP Runtime.evaluate (quota values only)
+Node.js scripts/run.mjs (127.0.0.1:9238)
+        ↓ JSONL over process stdio
+Local bundled Codex App Server
+        ↓ account/rateLimits/read (existing authenticated account)
+OpenAI quota snapshot
+```
 
-- `scripts/inject.mjs`: Node.js 22+ client for local CDP discovery and one-off `Runtime.evaluate`, no external dependencies.
-- `src/sidebar.js`: ephemeral DOM widget, idempotent re-injection, avatar anchor detection, display-only support for mock data.
-- Quota transport: **TBD**. Explore the documented Codex App Server `account/rateLimits/read` and verify it belongs to the currently signed-in app account. Never inject tokens into the renderer.
-- Future data adapter should normalize `{fiveHour:{usedPercent,resetsAt}, weekly:{usedPercent,resetsAt}}` and clearly distinguish absent data.
+- Renderer `src/sidebar.js` is an ephemeral, 36px-wide component attached to the avatar's `NAV` direct child, as confirmed by user DOM inspection. It contains a CDP `Runtime.addBinding` callback to request only a quota read; the renderer does not access auth or make network requests.
+- `src/app-server.mjs` starts a local child Codex process, performs JSON-RPC handshake (`initialize`, `initialized`), sends `account/rateLimits/read`. It does not read authentication files.
+- `src/rate-limits.mjs` classifies snapshots strictly by `windowDurationMins` = 300 and 10080, regardless of slot order.
+- The `scripts/run.mjs` helper keeps the local CDP binding and App Server process active. No HTTP server is exposed; it only connects to localhost CDP.
+- UI always shows remaining percent (`100 - usedPercent`), reset timestamp, local last-success time; missing windows show `--`. On a read error it retains the prior snapshot, marked stale.
+- A backend snapshot can lag real usage; there is no guarantee of live counters.
 
-## Desired quota refresh contract (not implemented yet)
+## 0.2 acceptance checklist (pending Mac testing)
 
-- Initial fetch on start, periodic background fetch every 120s.
-- Hover fetch only when last success is at least 60s old; suppress duplicates.
-- Manual button triggers a fresh request with 10s duplicate suppression.
-- Fresh server results may themselves lag actual usage: show an `updated at` tooltip.
-- Reset clock derives from server `resetsAt` and can count down locally without network calls.
-- Errors keep the old value but mark it stale; missing window is `--`, never 100%.
+- [ ] `npm run probe` produces 5h/7d values matching the ChatGPT Usage page for the active account (allow backend reporting lag).
+- [ ] `npm start` inserts the component above avatar, preserving 52px rail and avatar click.
+- [ ] No content overlap when ChatGPT window is short, light and dark themes render.
+- [ ] Hover tooltip shows absolute reset time; hover after 60s triggers another request.
+- [ ] Manual click refreshes, with 10s cooldown, and does not double-fetch.
+- [ ] Automatic refresh every 120s and stale-on-error behave as expected.
+- [ ] `Ctrl+C` stops local helper; reload and re-run restores the widget.
+- [ ] Signed-in mismatch or missing quota window is handled clearly.
 
-## v0.1 acceptance checklist
+## Known constraints
 
-- [ ] Injection attaches immediately before the avatar branch under `nav.group/sidebar-rail`.
-- [ ] Native avatar remains clickable and aligned after inserting widget.
-- [ ] Rail stays 52px wide with inner widgets capped at 36px.
-- [ ] No overlap with upper navigation icons at typical window heights.
-- [ ] Light/dark themes legible and hover tips accessible.
-- [ ] Repeated injections do not create duplicate widgets.
-- [ ] Destroy removes the widget and leaves the native UI intact.
+- A running shell helper is required for refresh; `npm run inject-layout` is for layout-only testing.
+- This version does not automatically reconnect after renderer reload. That is future work.
+- A normal child app-server might use a different `CODEX_HOME` or account than the UI; user must compare the read-only probe.
+- This relies on unsupported CDP injection, not an OpenAI plugin API.
