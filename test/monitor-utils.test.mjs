@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { findMainTarget, localWebSocketUrl, WIDGET_PROBE, probeState } from '../src/monitor-utils.mjs';
 import { parseArguments } from '../scripts/run.mjs';
-import { isChatGPTRunning, ensureChatGPTStarted } from '../scripts/launch.mjs';
+import { isChatGPTRunning, ensureChatGPTStarted, chatGPTLaunchEnvironment, CDP_FLAGS } from '../scripts/launch.mjs';
 import { xmlEscape, makePlist } from '../scripts/login-item.mjs';
 
 const main = { id: 'main', type: 'page', url: 'app://-/index.html', webSocketDebuggerUrl: 'ws://127.0.0.1:9238/devtools/page/main' };
@@ -44,25 +44,38 @@ test('parses options with bounded polling', () => {
 });
 
 test('never relaunches when CDP exists or ChatGPT already runs', async () => {
-  let launches = 0;
-  const mocks = { launch: () => { launches++; return { unref() {} }; }, checkAccess: async () => {} };
-  const present = await ensureChatGPTStarted({ ...mocks, portOpen: async () => true, running: async () => false });
-  assert.equal(present, 'cdp-ready');
+  let calls = 0;
+  const mocks = { open: async () => { calls++; }, checkAccess: async () => {} };
+  assert.equal(await ensureChatGPTStarted({ ...mocks, portOpen: async () => true, running: async () => false }), 'cdp-ready');
   await assert.rejects(ensureChatGPTStarted({ ...mocks, portOpen: async () => false, running: async () => true }), /已运行/);
-  assert.equal(launches, 0);
+  assert.equal(calls, 0);
 });
 
-test('launcher starts ChatGPT with loopback CDP only when not running', async () => {
+test('starts via Launch Services and passes CDP flags, not helper overrides', async () => {
   let call;
-  const launched = await ensureChatGPTStarted({
-    portOpen: async () => false,
-    running: async () => false,
-    checkAccess: async () => {},
-    launch(binary, args, opts) { call = { binary, args, opts }; return { unref() {} }; },
+  const result = await ensureChatGPTStarted({
+    portOpen: async () => false, running: async () => false, checkAccess: async () => {},
+    open: async (cmd, args, opts) => { call = { cmd, args, opts }; return {stdout:'',stderr:''}; },
+    env: {PATH:'/usr/bin',CODEX_CLI_PATH:'/other/codex',CSU_CODEX_CLI_PATH:'/helper/codex'},
   });
-  assert.equal(launched, 'launched');
-  assert.deepEqual(call.args, ['--remote-debugging-address=127.0.0.1', '--remote-debugging-port=9238']);
-  assert.equal(call.opts.detached, true);
+  assert.equal(result,'launched');
+  assert.equal(call.cmd,'/usr/bin/open');
+  assert.deepEqual(call.args,['-a','/Applications/ChatGPT.app','--args',...CDP_FLAGS]);
+  assert.equal(call.opts.env.CODEX_CLI_PATH,undefined);
+  assert.equal(call.opts.env.CSU_CODEX_CLI_PATH,undefined);
+});
+
+test('does not modify global or caller environment', () => {
+  const original={PATH:'/usr/bin',CODEX_CLI_PATH:'/other/codex',CSU_CODEX_CLI_PATH:'/helper/codex'};
+  assert.deepEqual(chatGPTLaunchEnvironment(original),{PATH:'/usr/bin'});
+  assert.equal(original.CODEX_CLI_PATH,'/other/codex');
+});
+
+test('native open failures remain diagnosable', async () => {
+  await assert.rejects(ensureChatGPTStarted({
+    portOpen: async () => false, running: async () => false, checkAccess: async () => {},
+    open: async () => {throw Error('No application registered')},
+  }),/Launch Services.*No application registered/);
 });
 
 test('pgrep treats exit code 1 as not running, other errors propagate', async () => {
