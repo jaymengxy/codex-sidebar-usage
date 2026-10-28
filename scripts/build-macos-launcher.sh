@@ -32,6 +32,15 @@ cp "$ROOT/scripts/run.mjs" "$ROOT/scripts/launch.mjs" "$DEST/Contents/Resources/
 cp "$ROOT/package.json" "$DEST/Contents/Resources/runtime/package.json"
 
 /usr/bin/plutil -insert CSUNodePath -string "$NODE_BIN" "$DEST/Contents/Info.plist"
+# Finder/Dock do not inherit the interactive shell PATH. Remember a verified
+# Codex CLI from this terminal at build time, without copying CLI credentials.
+CODEX_BIN="$(command -v codex || true)"
+if [[ "$CODEX_BIN" == /* && -f "$CODEX_BIN" && -x "$CODEX_BIN" ]]; then
+  /usr/bin/plutil -insert CSUCodexPath -string "$CODEX_BIN" "$DEST/Contents/Info.plist"
+  printf '检测到 Codex CLI：%s\n' "$CODEX_BIN"
+else
+  printf '未检测到终端 Codex CLI；Launcher 将自动查找或允许手动选择。\n'
+fi
 swiftc -O -framework AppKit "$ROOT/macos/Launcher.swift" -o "$DEST/Contents/MacOS/CodexUsageLauncher"
 chmod 755 "$DEST/Contents/MacOS/CodexUsageLauncher"
 # Local ad hoc signature, no developer account, notarization or distribution claim.

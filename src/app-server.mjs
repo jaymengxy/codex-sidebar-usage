@@ -1,22 +1,64 @@
 import { spawn } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { access, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { dirname, delimiter, isAbsolute, join } from 'node:path';
+import { homedir } from 'node:os';
 import { normalizeRateLimits } from './rate-limits.mjs';
 
 const DEFAULT_BUNDLED = '/Applications/ChatGPT.app/Contents/Resources/codex';
 
 async function executable(file) {
-  try { await access(file, constants.X_OK); return true; } catch { return false; }
+  try {
+    if (!(await stat(file)).isFile()) return false;
+    await access(file, constants.X_OK);
+    return true;
+  } catch { return false; }
 }
 
-export async function resolveCodexCommand(explicitPath) {
-  if (explicitPath) {
-    if (!(await executable(explicitPath))) throw new Error(`找不到可执行 Codex: ${explicitPath}`);
-    return explicitPath;
+/**
+ * Resolve a real absolute executable before spawn(). Finder/Dock applications
+ * may not inherit the user's terminal PATH, so never fall back to a bare
+ * 'codex' that could fail with an unhelpful ENOENT.
+ *
+ * options is injectable to test resolution without a macOS app bundle.
+ */
+export async function resolveCodexCommand(explicitPath, options = {}) {
+  const {
+    env = process.env,
+    home = homedir(),
+    nodeExecutable = process.execPath,
+    bundled = DEFAULT_BUNDLED,
+    isExecutable = executable,
+  } = options;
+  const chosen = explicitPath || env.CODEX_CLI_PATH;
+  if (chosen) {
+    if (!isAbsolute(chosen) || !(await isExecutable(chosen))) {
+      throw new Error(`Codex 可执行文件不可用：${chosen}。请在 Launcher 中选择正确的 Codex 文件（终端执行 command -v codex 可查询）。`);
+    }
+    return chosen;
   }
-  if (await executable(DEFAULT_BUNDLED)) return DEFAULT_BUNDLED;
-  return 'codex'; // PATH fallback; may have a different login from ChatGPT desktop.
+
+  const candidates = [
+    bundled,
+    join(dirname(nodeExecutable), 'codex'),
+    ...(env.PATH || '').split(delimiter).filter(Boolean).map(dir => join(dir, 'codex')),
+    '/opt/homebrew/bin/codex',
+    '/usr/local/bin/codex',
+    join(home, '.local', 'bin', 'codex'),
+    join(home, 'bin', 'codex'),
+  ];
+  const seen = new Set();
+  for (const file of candidates) {
+    if (!isAbsolute(file) || seen.has(file)) continue;
+    seen.add(file);
+    if (await isExecutable(file)) return file;
+  }
+  throw new Error(
+    '找不到 Codex CLI（不是额度接口错误）。请在终端运行 command -v codex，' +
+    '然后在 Codex Usage Launcher 点击「选择 Codex…」指定该文件。' +
+    '如果终端也找不到，请先安装或恢复 Codex CLI。'
+  );
 }
 
 export class CodexAppServer {
@@ -30,9 +72,14 @@ export class CodexAppServer {
   }
 
   async start() {
+    // A Codex wrapper may use `#!/usr/bin/env node`. Make the Node binary
+    // available even when the launcher inherited a minimal GUI PATH.
+    const binDir = dirname(process.execPath);
+    const runtimePath = [binDir, '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin',
+      process.env.PATH || ''].filter(Boolean).join(delimiter);
     this.#child = spawn(this.command, ['app-server', '--listen', 'stdio://'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: process.env,
+      env: { ...process.env, PATH: runtimePath },
     });
     const lines = createInterface({ input: this.#child.stdout });
     lines.on('line', line => {
@@ -47,7 +94,8 @@ export class CodexAppServer {
     });
     // Do not log stderr; it may contain account or diagnostic information.
     this.#child.stderr.resume();
-    this.#child.on('error', error => this.#rejectPending(`App Server 启动失败: ${error.code ?? error.message}`));
+    this.#child.on('error', error => this.#rejectPending(
+      `App Server 启动失败（${this.command}）：${error.code ?? error.message}；请确认所选 Codex CLI 可执行。`));
     this.#child.on('exit', () => this.#rejectPending('App Server 已退出'));
 
     await this.request('initialize', {

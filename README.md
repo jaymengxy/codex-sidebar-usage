@@ -10,13 +10,14 @@ An **unofficial** compact quota indicator for the Codex sidebar of the ChatGPT m
 | --- | --- | --- |
 | v0.1 | **PASS** (user tested) | 52px rail / 36px content, avatar-relative placement, DOM injection |
 | v0.2.1 | **PASS** (user tested, merged `main`) | Real Codex rate limits, refresh, 5h green / 7d orange bars |
-| v0.3 | **Development / device acceptance pending** | Restart/reload reconnection; Swift `.app` Launcher and optional legacy LaunchAgent |
+| v0.3 | **Development / device acceptance pending** | Restart/reload reconnection; native Swift `.app` launcher and optional legacy LaunchAgent |
 
 **Verified Mac:** ChatGPT `26.1021.31345`, bundle ID `com.openai.codex`, main renderer `app://-/index.html`. Other versions and login-start behavior are unverified.
 
 ## Requirements
 
-- macOS; ChatGPT installed at `/Applications/ChatGPT.app`.
+- macOS 13+; ChatGPT installed at `/Applications/ChatGPT.app`.
+- **Native .app build:** Xcode Command Line Tools (`xcode-select --install`, provides `swiftc`).
 - Node.js **22+** (`node --version`). No `npm install` required.
 - Codex App Server executable in the ChatGPT bundle (or a separately authenticated `codex` executable). Check quota values against ChatGPT's built-in Usage page before relying on them.
 - CDP bound **only** to `127.0.0.1:9238`.
@@ -39,39 +40,44 @@ npm run launch       # launches ChatGPT with CDP if not already running; monitor
 
 `npm start` remains available if you have *already launched ChatGPT with CDP*. `npm run probe` works without CDP; it only requests read-only rate limits.
 
+## Native Swift Launcher.app — double-click, no Terminal during normal use
 
-## Native Swift Launcher.app — double-click (v0.3 preview)
+This v0.3 development branch adds a **real AppKit macOS app**, not an Automator / `.command` wrapper. The `.app` embeds an explicit allowlist of quota-monitor JS source files (not account data); it calls the installed Node.js 22+ executable to run them. It does **not** modify `ChatGPT.app`.
 
-A genuine **AppKit macOS application** is provided in `macos/Launcher.swift`. It bundles the JS quota-monitor files in its own `Contents/Resources/runtime`, so moving the built `.app` to `~/Applications` does **not** require keeping the Git repository at its original path. It still needs an installed Node.js 22+ executable; you can select a new Node path from the app UI if needed. The launcher is an unofficial, non-notarized local utility, and does not modify ChatGPT.
-
-### Build locally on your Mac
-
-Install Xcode Command Line Tools if `swiftc` is missing (`xcode-select --install`). From the v0.3 branch run:
+**First-time build on a Mac** (the build requires the macOS SDK, so a ready-to-run `.app` cannot be compiled from Linux):
 
 ```bash
+cd ~/Code/codex-sidebar-usage
+git fetch origin
+git switch feat/auto-launch-v0.3
 npm run check && npm test
-npm run launcher:build
-npm run launcher:open
+npm run launcher:build   # Swift/AppKit compile + bundle JS runtime + local ad-hoc signing
+npm run launcher:open    # double-click equivalent, for first test
 ```
 
-The builder compiles `Codex Usage Launcher.app` using Swift/AppKit and ad-hoc signs it for local use. To install into `~/Applications` and add to Dock:
+**Optional installation into your personal Applications folder:**
 
 ```bash
 npm run launcher:install
 open "$HOME/Applications/Codex Usage Launcher.app"
+# Then you may drag the app from Finder into the Dock.
 ```
 
-Double-clicking the `.app` automatically tries to start ChatGPT with loopback CDP and the quota helper. It offers **启动监控 / 停止监控 / 选择 Node…** buttons and a log window. Closing the window keeps the launcher running; reopen it from Dock. **Cmd+Q stops its own helper but does not close ChatGPT.** The helper's refresh and re-injection behavior is the same as `npm run launch`.
+The app opens a small native window, **starts the helper automatically**, and provides **Start monitor / Stop monitor / Select Node…** controls plus a live, local-only diagnostic log. Closing its window leaves it running; click its Dock icon to reopen. **Cmd+Q** quits the launcher and stops *its own* helper; ChatGPT remains running. The helper only needs a separate terminal if you are intentionally using the older CLI approach.
 
-The app records the local Node path at build time. If you update or relocate Node, select its executable in the app or rebuild. If you update the project source, **rebuild and reinstall the `.app`** to embed the new version.
+**Node path:** the builder records your absolute `node` executable path in the app's `Info.plist`. If the Node executable is moved during an `nvm`/Homebrew upgrade, click **选择 Node…** in the app to select the new Node 22+ binary, or rebuild/reinstall. The application bundle remains usable after moving it into `~/Applications` without access to the Git clone; code changes require rebuilding and reinstalling the `.app`.
 
-**Avoid running duplicate helpers:** Stop any old `npm start`/`npm run launch` process and uninstall the legacy login item (`npm run login:uninstall`) before opening the native app. The native app refuses to start while the old LaunchAgent plist exists. Do not enable both the old LaunchAgent and an independent login launch of this `.app`. For now, automatic login of the `.app` itself is untested and not configured by the installer.
+**Avoid duplicate helpers:** stop old `npm run launch` / `npm start` terminals before running the native launcher. If the previous LaunchAgent is installed, remove it with `npm run login:uninstall` before launching the new `.app`. The GUI deliberately refuses to run alongside a detected old LaunchAgent. Do not enable both the old login item and the new app's startup at login simultaneously. Login startup for the new `.app` itself has **not** been automated; first verify its interactive launch.
 
-If ChatGPT is already running without CDP, the launcher will show an error; quit ChatGPT fully with Cmd+Q and click **启动监控** again. It never force-quits an existing ChatGPT instance.
+**When ChatGPT is already open without CDP**, the helper reports an actionable error instead of closing or modifying it. Quit ChatGPT with Cmd+Q and press **启动监控** in the launcher again. It launches ChatGPT with CDP when the app is not running.
 
-To remove only the installed launcher: `npm run launcher:uninstall`. No app credentials or login tokens are bundled.
+To remove only the installed native launcher (not ChatGPT or the source repository):
 
-**macOS device validation remains open:** the Swift parser and automated static tests pass, but the actual AppKit build cannot run in our non-macOS environment.
+```bash
+npm run launcher:uninstall
+```
+
+The `.app` is ad-hoc signed for *local use*, not Apple Developer ID notarized or intended for general public distribution. macOS may require explicit user approval for unsigned/ad-hoc applications outside your own build environment.
 
 ## Optional: start automatically at macOS login
 
@@ -114,6 +120,6 @@ To remove the widget temporarily from DevTools:
 window.__codexUsageSidebarV02?.destroy();
 ```
 
-The monitor will re-inject it while running; stop the helper first (`Ctrl+C`) if you want it gone. `npm run login:uninstall` disables future login launches.
+The monitor will re-inject it while running; stop the helper first (`Ctrl+C`) if you want it gone. `npm run login:uninstall` disables legacy LaunchAgent login launches. `npm run launcher:uninstall` removes the new native `.app` installation.
 
 See [architecture](docs/architecture.md), [compatibility](docs/compatibility.md) and [changelog](CHANGELOG.md).

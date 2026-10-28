@@ -42,3 +42,7 @@ No version compatibility guarantee is made for macOS ChatGPT updates. Document c
 - A locally built `.app` includes quota source and is independent of the Git checkout path; it still needs the configured Node executable (user-selectable in GUI).
 - Built for the current Mac architecture; ad-hoc signed, not notarized. External distribution may encounter macOS Gatekeeper approval.
 - No actual macOS AppKit compilation or Dock/login testing has been performed in this environment.
+
+### GUI Codex lookup
+
+A macOS Dock/Finder launch might not inherit the interactive terminal's Node/Codex `PATH`. Before v0.3 fix, this could appear as `App Server 启动失败: ENOENT`. The v0.3 fix resolves absolute paths, embeds a build-time CLI location when available, provides native manual selection, and logs a specific missing-executable explanation. Verify on the user's macOS installation before marking native acceptance PASS.

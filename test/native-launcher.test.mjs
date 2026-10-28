@@ -48,3 +48,11 @@ test('app bundle contains correct launch identity and minimum macOS', () => {
   assert.match(info, /<key>LSMinimumSystemVersion<\/key><string>13\.0<\/string>/);
   assert.match(info, /dev\.paperauk\.codex-sidebar-usage\.launcher/);
 });
+
+test('Swift launcher allows explicit Codex CLI selection and passes it to Node', () => {
+  assert.match(source, /chooseCodex\(_ sender: Any\?\)/);
+  assert.match(source, /CSUCodexOverride/);
+  assert.match(source, /CSUCodexPath/);
+  assert.match(build, /plutil -insert CSUCodexPath/);
+  assert.match(source, /environment\["CODEX_CLI_PATH"\] = codex/);
+});

@@ -65,3 +65,10 @@ Legacy macOS login (optional alternative; NOT used simultaneously with .app)
 - `scripts/install-macos-launcher.sh` copies only the recognized bundle ID into `~/Applications`; does not touch `ChatGPT.app`.
 - The native app refuses to run alongside the old LaunchAgent, preventing accidental duplicate quota monitors through that path. Stop manual monitors before using the native app.
 - AppKit build and runtime verification remain device-gated.
+
+## Native launcher CLI discovery (v0.3 ENOENT fix)
+
+- Finder-launched `.app` does not necessarily inherit shell `PATH`. `src/app-server.mjs` must resolve an **absolute executable** before calling `spawn`. It never falls back to a bare `codex` command.
+- Resolution priority: user override (`CODEX_CLI_PATH`), ChatGPT bundle path if executable, next to active Node binary, inherited `PATH`, Homebrew and common user bins.
+- `scripts/build-macos-launcher.sh` captures the verified terminal `codex` executable path in `CSUCodexPath` at build time (when found). `macos/Launcher.swift` lets the user override via **选择 Codex…** without editing application internals.
+- App Server child PATH includes the active Node executable directory to support `#!/usr/bin/env node` wrappers. No tokens, credentials or raw app-server JSON are logged.

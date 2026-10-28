@@ -9,6 +9,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
     private var startButton: NSButton!
     private var stopButton: NSButton!
     private var nodeButton: NSButton!
+    private var codexButton: NSButton!
     private var logTextView: NSTextView!
     private var helper: Process?
     private var stdoutPipe: Pipe?
@@ -20,6 +21,12 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
     private var nodePath: String? {
         let value = (UserDefaults.standard.string(forKey: "CSUNodeOverride") ??
             Bundle.main.object(forInfoDictionaryKey: "CSUNodePath") as? String)
+        return value?.hasPrefix("/") == true ? value : nil
+    }
+
+    private var codexPath: String? {
+        let value = (UserDefaults.standard.string(forKey: "CSUCodexOverride") ??
+            Bundle.main.object(forInfoDictionaryKey: "CSUCodexPath") as? String)
         return value?.hasPrefix("/") == true ? value : nil
     }
 
@@ -77,7 +84,9 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
 
         nodeButton = NSButton(title: "选择 Node…", target: self, action: #selector(chooseNode(_:)))
         nodeButton.bezelStyle = .rounded
-        let buttons = NSStackView(views: [startButton, stopButton, nodeButton])
+        codexButton = NSButton(title: "选择 Codex…", target: self, action: #selector(chooseCodex(_:)))
+        codexButton.bezelStyle = .rounded
+        let buttons = NSStackView(views: [startButton, stopButton, nodeButton, codexButton])
         buttons.orientation = .horizontal
         buttons.spacing = 12
 
@@ -181,6 +190,30 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func chooseCodex(_ sender: Any?) {
+        let panel = NSOpenPanel()
+        panel.title = "选择 Codex CLI 可执行文件（终端执行 command -v codex 可查找）"
+        panel.prompt = "使用这个 Codex"
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.showsHiddenFiles = true
+        panel.beginSheetModal(for: window) { [weak self] result in
+            guard result == .OK, let path = panel.url?.path else { return }
+            guard FileManager.default.isExecutableFile(atPath: path) else {
+                self?.setStatus("所选 Codex 文件不可执行，请重新选择。", running: self?.helper != nil)
+                return
+            }
+            UserDefaults.standard.set(path, forKey: "CSUCodexOverride")
+            self?.appendLog("已设置 Codex CLI 路径：\(path)")
+            if self?.helper == nil {
+                self?.setStatus("Codex 路径已设置，点击启动监控。", running: false)
+            } else {
+                self?.appendLog("请先停止监控、再启动，新的路径才会生效。")
+            }
+        }
+    }
+
     @objc private func startMonitor(_ sender: Any?) {
         guard helper == nil else { return }
         guard let node = nodePath, FileManager.default.isExecutableFile(atPath: node) else {
@@ -205,7 +238,9 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         process.arguments = [root.appendingPathComponent("scripts/launch.mjs").path]
         process.currentDirectoryURL = root
         // Node is launched by its absolute path; existing login credentials stay in the OS account.
-        process.environment = ProcessInfo.processInfo.environment
+        var environment = ProcessInfo.processInfo.environment
+        if let codex = codexPath { environment["CODEX_CLI_PATH"] = codex }
+        process.environment = environment
         let out = Pipe()
         let err = Pipe()
         process.standardOutput = out
