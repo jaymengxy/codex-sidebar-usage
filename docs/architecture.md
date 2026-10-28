@@ -72,3 +72,10 @@ Legacy macOS login (optional alternative; NOT used simultaneously with .app)
 - Resolution priority: user override (`CODEX_CLI_PATH`), ChatGPT bundle path if executable, next to active Node binary, inherited `PATH`, Homebrew and common user bins.
 - `scripts/build-macos-launcher.sh` captures the verified terminal `codex` executable path in `CSUCodexPath` at build time (when found). `macos/Launcher.swift` lets the user override via **选择 Codex…** without editing application internals.
 - App Server child PATH includes the active Node executable directory to support `#!/usr/bin/env node` wrappers. No tokens, credentials or raw app-server JSON are logged.
+
+## v0.3 Launcher startup environment
+
+- The Swift application passes its selected quota reader CLI to the helper via `CSU_CODEX_CLI_PATH`. It must not use `CODEX_CLI_PATH`, which ChatGPT may use to select its own version-sensitive App Server.
+- The Node helper invokes macOS Launch Services using `/usr/bin/open -a /Applications/ChatGPT.app --args` with loopback CDP flags. It strips both helper and Codex override variables in that child process only.
+- No global launchd or shell settings are modified. An independently configured `launchctl getenv CODEX_CLI_PATH` can still affect launchd-started apps.
+- A native ChatGPT working without CDP is an important fault-isolation baseline; macOS end-to-end Launcher validation remains open.
