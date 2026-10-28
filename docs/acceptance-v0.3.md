@@ -34,3 +34,16 @@ These remain future optional QA tasks; they must not be marked `PASS` by inferen
 ## Follow-up regression suggestions
 
 After macOS/ChatGPT or Node upgrades: verify CLI resolution; native app normal login; sidebar widget deletion/recovery; renderer reload/recovery; one-widget invariant; accurate five-hour/weekly windows and refresh. If the normal ChatGPT launch succeeds but Launcher fails, isolate CDP startup and helper CLI override before changing user credentials or cached state.
+
+
+## v0.3.1 follow-up acceptance (not yet device verified)
+
+This development iteration follows the user's original **v0.3.0 PASS** and does not supersede it. Required quick recheck on a Mac after `npm run launcher:build && npm run launcher:install`:
+
+- [ ] One click on **停止监控** updates to the stopped state after helper exit; late log output does not revert the label; no second click is needed.
+- [ ] Quota hover retains the normal pointer with no question-mark and no native title popup.
+- [ ] Clicking 5h/7d opens exactly one reset-time panel; repeated click on the same item never duplicates; clicking outside or Escape closes it; no rail clipping.
+- [ ] Newly installed `Codex Usage Launcher.app` shows the local ChatGPT icon with two lower-left green/orange horizontal bars in Finder and Dock (decorative, not live data).
+- [ ] Original startup, quota accuracy, refresh and 4/4 restart/recovery scenarios remain passing.
+
+Linux/static tests cannot substitute for these AppKit/Finder/rendered UI checks. **Do not mark v0.3.1 as accepted until these are completed.**
