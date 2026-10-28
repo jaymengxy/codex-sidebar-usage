@@ -25,7 +25,7 @@ if [[ -e "$DEST" ]]; then
   rm -rf -- "$DEST"
 fi
 
-mkdir -p "$DEST/Contents/MacOS" "$DEST/Contents/Resources/runtime/src" "$DEST/Contents/Resources/runtime/scripts"
+mkdir -p "$DEST/Contents/MacOS" "$DEST/Contents/Resources/runtime/src" "$DEST/Contents/Resources/runtime/scripts" "$DEST/Contents/Resources"
 cp "$ROOT/macos/Info.plist" "$DEST/Contents/Info.plist"
 cp "$ROOT/src/sidebar.js" "$ROOT/src/app-server.mjs" "$ROOT/src/rate-limits.mjs" "$ROOT/src/monitor-utils.mjs" "$DEST/Contents/Resources/runtime/src/"
 cp "$ROOT/scripts/run.mjs" "$ROOT/scripts/launch.mjs" "$DEST/Contents/Resources/runtime/scripts/"
@@ -43,6 +43,31 @@ else
 fi
 swiftc -O -framework AppKit "$ROOT/macos/Launcher.swift" -o "$DEST/Contents/MacOS/CodexUsageLauncher"
 chmod 755 "$DEST/Contents/MacOS/CodexUsageLauncher"
+# Create a real .icns from the user's installed ChatGPT icon at build time.
+# The source icon is NEVER checked into this repository or distributed with source.
+ICON_DIR="$(mktemp -d "${TMPDIR:-/tmp}/csu-icon.XXXXXX")"
+trap 'rm -rf -- "$ICON_DIR"' EXIT
+swiftc -O -framework AppKit "$ROOT/macos/generate-icon.swift" -o "$ICON_DIR/generate-icon"
+"$ICON_DIR/generate-icon" /Applications/ChatGPT.app "$ICON_DIR/base.png"
+ICONSET="$ICON_DIR/AppIcon.iconset"
+mkdir -p "$ICONSET"
+while read -r name size; do
+  /usr/bin/sips -z "$size" "$size" "$ICON_DIR/base.png" --out "$ICONSET/$name" >/dev/null
+done <<'ICON_SIZES'
+icon_16x16.png 16
+icon_16x16@2x.png 32
+icon_32x32.png 32
+icon_32x32@2x.png 64
+icon_128x128.png 128
+icon_128x128@2x.png 256
+icon_256x256.png 256
+icon_256x256@2x.png 512
+icon_512x512.png 512
+icon_512x512@2x.png 1024
+ICON_SIZES
+/usr/bin/iconutil -c icns "$ICONSET" -o "$DEST/Contents/Resources/AppIcon.icns"
+test -s "$DEST/Contents/Resources/AppIcon.icns" || { echo 'AppIcon.icns 生成失败' >&2; exit 1; }
+printf '已生成图标：ChatGPT 基础 + 左下角绿色/橙色横向进度条。\n'
 # Local ad hoc signature, no developer account, notarization or distribution claim.
 if command -v codesign >/dev/null; then codesign --force --deep --sign - "$DEST" >/dev/null; fi
 printf '已构建：%s\n使用 Node：%s\n' "$DEST" "$NODE_BIN"
