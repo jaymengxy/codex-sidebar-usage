@@ -54,5 +54,6 @@ test('Swift launcher allows explicit Codex CLI selection and passes it to Node',
   assert.match(source, /CSUCodexOverride/);
   assert.match(source, /CSUCodexPath/);
   assert.match(build, /plutil -insert CSUCodexPath/);
-  assert.match(source, /environment\["CODEX_CLI_PATH"\] = codex/);
+  assert.match(source, /environment\["CSU_CODEX_CLI_PATH"\] = codex/);
+  assert.match(source, /environment\.removeValue\(forKey: "CODEX_CLI_PATH"\)/);
 });
