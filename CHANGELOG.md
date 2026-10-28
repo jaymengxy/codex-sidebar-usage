@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.1 — polish candidate (2026-10-28, macOS revalidation pending)
+
+- **Swift Launcher stop control:** make stop state idempotent; suppress late “connected” logs during stop, disable redundant clicks, add a 5-second child-process watchdog and stop-state cleanup. Node supervisor now interrupts its 3-second poll immediately when SIGTERM arrives. The status only becomes “stopped” after process exit is confirmed.
+- **Quota interaction:** replace the question-mark hover cursor with the normal cursor. Click a five-hour or weekly quota to open an explicit reset-time popover; never create a duplicate while the same popover is open. Click elsewhere or press Esc to dismiss; keyboard Enter/Space supported. Remove the redundant native hover tooltip, update panel contents after successful refresh, and clean up events on widget removal.
+- **Native app icon:** generate AppIcon.icns at build time from the locally installed ChatGPT.app icon, overlaying two fixed decorative green/orange bars in the lower-left corner. Original ChatGPT logo bytes are not committed to the repository.
+- **Documentation:** rewritten English README with language badges; complete `README.zh-CN.md`, both showing Terminal and native Launcher launch modes. Update acceptance boundaries and troubleshooting.
+- **Automated regression coverage:** `test/v03-polish.test.mjs` adds eight checks for stop UI, popover behavior, asset generation and bilingual docs.
+- **Acceptance:** the earlier v0.3.0 core recovery tests remain PASS (user-reported 4/4); these new v0.3.1 UI/icon changes still require native macOS visual and process recheck.
+
 ## v0.3.0 — accepted for native Launcher workflow (2026-10-28)
 
 **Mac acceptance:** user confirmed four of four core scenarios: widget auto-reinjection after removal, renderer reload recovery, full quit/restart using the native Swift Launcher, and exactly one widget with correct quota and refresh behavior. Also confirmed normal ChatGPT startup after the CLI environment isolation fix.
