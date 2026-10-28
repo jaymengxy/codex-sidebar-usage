@@ -9,6 +9,7 @@
   <key>CFBundleName</key><string>Codex Usage Launcher</string>
   <key>CFBundleDisplayName</key><string>Codex Usage Launcher</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleShortVersionString</key><string>0.3.0</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
