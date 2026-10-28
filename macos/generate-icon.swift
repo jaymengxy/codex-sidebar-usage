@@ -27,9 +27,9 @@ guard let bitmap = NSBitmapImageRep(
 NSGraphicsContext.saveGraphicsState()
 NSGraphicsContext.current = context
 context.imageInterpolation = .high
-let frame = NSRect(x: 0, y: 0, width: side, height: side)
+let frame = NSRect(x: 0, y: 0, width: CGFloat(side), height: CGFloat(side))
 NSColor.clear.setFill()
-frame.fill()
+NSBezierPath(rect: frame).fill()
 
 let appIcon = NSWorkspace.shared.icon(forFile: chatGPTPath)
 appIcon.size = frame.size
