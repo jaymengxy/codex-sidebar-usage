@@ -1,0 +1,36 @@
+# v0.3.0 macOS acceptance record
+
+**Date:** 2026-10-28  
+**Product:** Codex Sidebar Usage — native Swift/AppKit Launcher  
+**Branch under review:** `feat/auto-launch-v0.3` (PR #2)  
+**Test environment:** User's Mac, ChatGPT `26.1021.31345` (`com.openai.codex`), loopback CDP `127.0.0.1:9238`
+
+## Confirmed by the user
+
+| ID | Procedure | Acceptance result |
+| --- | --- | --- |
+| A1 | Remove `#codex-sidebar-usage-widget` in main renderer; wait for supervisor re-injection | **PASS** |
+| A2 | Reload `app://-/index.html`; verify widget/quotas reappear | **PASS** |
+| A3 | Quit both ChatGPT and Launcher, then double-click native Launcher; verify ChatGPT/quotas start normally | **PASS** |
+| A4 | Verify exactly one widget after recovery; quotas, refresh and progress-bar colors work | **PASS** |
+
+The user separately confirmed that the revised Swift Launcher opens ChatGPT without the previous organization-settings error and that actual remaining quotas display normally after the startup environment fix.
+
+**Evidence classification:** User-reported macOS manual acceptance. No screenshot/video/device telemetry was independently collected here. Automated development tests previously reported 40/40 PASS on Node.js; those are not a substitute for the Mac tests and were not rerun as part of this documentation-only acceptance commit.
+
+## Merge decision
+
+**Ready to merge into `main` for the native Swift Launcher + quota/reinjection workflow** on the tested Mac/ChatGPT build. The four scenarios cover the release's primary user-facing goal. Keep optional legacy features documented as experimental.
+
+## Explicitly not independently verified
+
+- Legacy LaunchAgent `npm run login:install` startup at macOS login and its uninstall workflow.
+- Running non-CDP ChatGPT collision handling, all Node/Codex chooser and Start/Stop edge cases.
+- Long-duration stability, unexpected App Server crashes, and compatibility across other ChatGPT/macOS versions.
+- Developer ID signing, notarization, public software distribution.
+
+These remain future optional QA tasks; they must not be marked `PASS` by inference. A new ChatGPT renderer version should be retested before claiming compatibility.
+
+## Follow-up regression suggestions
+
+After macOS/ChatGPT or Node upgrades: verify CLI resolution; native app normal login; sidebar widget deletion/recovery; renderer reload/recovery; one-widget invariant; accurate five-hour/weekly windows and refresh. If the normal ChatGPT launch succeeds but Launcher fails, isolate CDP startup and helper CLI override before changing user credentials or cached state.

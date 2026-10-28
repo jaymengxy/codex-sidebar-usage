@@ -1,33 +1,35 @@
 # Changelog
 
-## v0.3.0 (development — macOS device gate open)
+## v0.3.0 — accepted for native Launcher workflow (2026-10-28)
 
-### Startup environment isolation fix (requires Mac re-test)
-- Fix Swift Launcher forwarding `CODEX_CLI_PATH` to ChatGPT, potentially causing an incompatible App Server and the “organization settings could not be loaded” startup error.
-- Use private `CSU_CODEX_CLI_PATH` only for the quota reader. Never change user-wide environment variables.
-- Launch signed ChatGPT via macOS Launch Services instead of raw bundle executable.
-- Add regression tests and recovery instructions; quotas UI and data flow unchanged.
+**Mac acceptance:** user confirmed four of four core scenarios: widget auto-reinjection after removal, renderer reload recovery, full quit/restart using the native Swift Launcher, and exactly one widget with correct quota and refresh behavior. Also confirmed normal ChatGPT startup after the CLI environment isolation fix.
 
+### Features
+- Add native Swift/AppKit `Codex Usage Launcher.app` with double-click ChatGPT/CDP startup, quota monitor controls and log view; packages its JS runtime locally.
+- Add local CDP supervision (3s polling) with renderer/DOM reattachment and idempotent widget injection.
+- Add `npm run launch` one-terminal mode and optional, **not device-accepted**, legacy user LaunchAgent login workflow.
+- Keep existing five-hour / weekly quota UI and refresh mechanism.
 
-- Add a native **Swift/AppKit** `Codex Usage Launcher.app` with one-click startup, monitor controls, local diagnostics, and Node-path selection.
-- Add `npm run launcher:build`, `launcher:open`, `launcher:install`, `launcher:uninstall`; package the JS runtime inside `.app` without credentials. Local ad-hoc signing; macOS build and GUI device gate still open.
-- Add a CDP supervisor that monitors the ChatGPT main `app://-/index.html` renderer and reconnects when the target disappears or the WebSocket disconnects.
-- Reinject the existing widget after renderer reload and sidebar DOM re-creation without duplicating an already healthy instance.
-- Add `npm run launch`: starts ChatGPT with loopback CDP when not already running, then runs the persistent quota bridge. Never terminates or replaces a running app.
-- Add opt-in `npm run login:install`, `login:status`, and `login:uninstall` to manage a user-level macOS LaunchAgent. No changes to `ChatGPT.app`.
-- Update README, architecture, compatibility and automated coverage.
-- Static / unit checks PASS; runtime macOS login and reconnection tests still pending.
+### Startup and compatibility fixes
+- Resolve the App Server executable to an absolute path, with GUI-selectable Codex CLI fallback; address GUI `ENOENT` caused by missing `PATH` entry.
+- Isolate quota-helper `CSU_CODEX_CLI_PATH` from ChatGPT's own `CODEX_CLI_PATH`; launch ChatGPT through macOS Launch Services to avoid interfering with native App Server initialization.
+- Maintain loopback-only CDP connection, no credential extraction, no app bundle modifications.
 
-## v0.2.1 (accepted, merged into main)
+### Verification / known limits
+- Prior development automation result: 40/40 Node tests PASS, Swift syntax checks PASS. No GitHub CI checks are currently configured for this PR.
+- User-reported macOS acceptance: 4/4 core recovery cases PASS. See [acceptance](docs/acceptance-v0.3.md).
+- Legacy LaunchAgent login cycle, non-CDP collision flow, alternative macOS/ChatGPT versions, notarization and long-term compatibility are **not verified**, not part of this acceptance claim.
+- The native app is ad-hoc signed for local use and depends on an installed Node.js 22+ runtime.
 
-- Fix bar fill geometry: explicit block track and positioned span fill.
-- Five-hour #16A34A green, weekly #D97706 orange.
-- User confirmed real quota UI and visual output on macOS.
+## v0.2.1 — accepted
+
+- Correct progress fill geometry; five-hour `#16A34A` green and weekly `#D97706` orange.
+- User confirmed live quota UI and progress bar colors on macOS.
 
 ## v0.2.0
 
-- Read-only Codex App Server quota bridge, automatic/manual/hover refresh.
+- Read-only Codex App Server quota bridge and automatic/manual/hover refresh.
 
 ## v0.1.0
 
-- First 52px sidebar injection prototype, user accepted.
+- First narrow 52px rail DOM injection prototype, user accepted.
