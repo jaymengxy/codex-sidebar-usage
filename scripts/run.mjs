@@ -7,18 +7,10 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { CodexAppServer, resolveCodexCommand } from '../src/app-server.mjs';
-import { CDP_HOST, CDP_PORT, findMainTarget, localWebSocketUrl, WIDGET_PROBE, probeState } from '../src/monitor-utils.mjs';
+import { CDP_HOST, CDP_PORT, findMainTarget, localWebSocketUrl, WIDGET_PROBE, probeState, abortableSleep } from '../src/monitor-utils.mjs';
 
 const bindingName = '__codexUsageFetchV02';
 const scriptPath = fileURLToPath(new URL('../src/sidebar.js', import.meta.url));
-// SIGTERM must interrupt the poll delay immediately, not wait up to 3 seconds.
-const sleep = (ms, signal) => new Promise(resolve => {
-  if (signal.aborted) return resolve();
-  const onAbort = () => { clearTimeout(timer); resolve(); };
-  const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(); }, ms);
-  signal.addEventListener('abort', onAbort, { once: true });
-});
-
 class CdpSession {
   #socket;
   #sequence = 0;
@@ -175,7 +167,7 @@ export async function run(argv = process.argv.slice(2)) {
         session?.close(); session = null; targetId = null;
         if (!stopping) logOnce(`CDP 暂不可用，稍后自动重试：${error.message}`);
       }
-      if (!stopping) await sleep(options.pollMs, stopSignal.signal);
+      if (!stopping) await abortableSleep(options.pollMs, stopSignal.signal);
     }
   } finally {
     stop();
