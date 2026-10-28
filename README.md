@@ -79,6 +79,32 @@ npm run launcher:uninstall
 
 The `.app` is ad-hoc signed for *local use*, not Apple Developer ID notarized or intended for general public distribution. macOS may require explicit user approval for unsigned/ad-hoc applications outside your own build environment.
 
+### 修复：原生 ChatGPT 正常、Launcher 启动却提示组织设置无法加载
+
+旧版 v0.3 Swift Launcher 会把你为额度读取服务选择的 Codex CLI 通过 `CODEX_CLI_PATH` 传给启动 ChatGPT 的子进程。ChatGPT 本身也会读取这个变量并可能错误地使用不兼容的外部 App Server。**这不是用户登录失效的证据，无需删除缓存或退出登录。**
+
+修复版改为使用仅供额度助手读取的 `CSU_CODEX_CLI_PATH`，ChatGPT 通过 macOS Launch Services (`/usr/bin/open -a ... --args`) 启动。请退出 Launcher 和 ChatGPT (Cmd+Q)，更新并重新编译**已安装的 .app**：
+
+```bash
+cd ~/Code/codex-sidebar-usage
+git switch feat/auto-launch-v0.3
+git pull --ff-only
+npm run check && npm test
+npm run launcher:build && npm run launcher:install
+open "$HOME/Applications/Codex Usage Launcher.app"
+```
+
+如果仍有问题，先退出两款应用，然后**单独测试 CDP 参数**，不要启动额度助手：
+
+```bash
+/usr/bin/open -a "/Applications/ChatGPT.app" --args \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port=9238
+curl --noproxy '*' -fsS http://127.0.0.1:9238/json/version
+```
+
+如果原生正常但这个 CDP 启动失败，请暂时停止使用 Launcher；如果 CDP 启动正常而 Launcher 失败，则继续排查其 Node 运行环境。可以通过 `launchctl getenv CODEX_CLI_PATH` **只读检查**系统登录环境是否存在覆盖，本项目不会修改该全局设置。以上恢复流程仍需 macOS 实机验收。
+
 ## Optional: start automatically at macOS login
 
 **Opt in only after manual `npm run launch` works on your Mac.** Disable ChatGPT's own “Open at Login” option first to avoid a race where ChatGPT launches without CDP.
