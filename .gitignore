@@ -6,3 +6,6 @@ node_modules/
 *.asar
 *.session
 *.token
+dist/
+*.iconset/
+*.dSYM/
