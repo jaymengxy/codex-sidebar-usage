@@ -239,7 +239,9 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         process.currentDirectoryURL = root
         // Node is launched by its absolute path; existing login credentials stay in the OS account.
         var environment = ProcessInfo.processInfo.environment
-        if let codex = codexPath { environment["CODEX_CLI_PATH"] = codex }
+        // Never send a helper-specific CLI override to ChatGPT itself.
+        environment.removeValue(forKey: "CODEX_CLI_PATH")
+        if let codex = codexPath { environment["CSU_CODEX_CLI_PATH"] = codex }
         process.environment = environment
         let out = Pipe()
         let err = Pipe()
