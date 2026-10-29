@@ -1,5 +1,7 @@
 # Codex Sidebar Usage
 
+**当前版本：v0.3.1** · [版本发布](https://github.com/jaymengxy/codex-sidebar-usage/releases)
+
 [![English](https://img.shields.io/badge/README-English-777777)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-377cfb)](README.zh-CN.md)
 
 一个轻量的非官方 macOS 小工具，让你在 **ChatGPT 桌面客户端的左侧导航栏** 中直接查看 **Codex 使用额度**，无需反复打开用量设置页面。
@@ -31,10 +33,10 @@
 ```bash
 git clone https://github.com/jaymengxy/codex-sidebar-usage.git
 cd codex-sidebar-usage
-git switch feat/auto-launch-v0.3
+git switch main
 ```
 
-目前原生 Launcher 版本位于 `feat/auto-launch-v0.3` 分支。你的 GitHub 账号需要有仓库访问权限。
+正式版代码位于 `main` 分支。你的 GitHub 账号需要有仓库访问权限。
 
 ## 方式一：使用终端启动
 
