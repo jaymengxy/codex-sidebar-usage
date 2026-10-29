@@ -1,8 +1,8 @@
 # Changelog
 
-## v0.3.1 — polish candidate (2026-10-28, macOS revalidation pending)
+## v0.3.1 — released (2026-10-29)
 
-- **Native icon sizing correction (2026-10-29):** remove the 98%-occupancy source icon enlargement, which created a Launcher Dock icon about 18% bigger than native ChatGPT in a user screenshot. Draw the ChatGPT artwork at its original canvas scale, preserving macOS-safe transparent padding; measure visible alpha only to position/size the decorative green/orange badge. Increment the bundle build number to help icon cache registration. This change needs macOS visual acceptance.
+- **Native icon sizing correction (2026-10-29):** remove the 98%-occupancy source icon enlargement, which created a Launcher Dock icon about 18% bigger than native ChatGPT in a user screenshot. Draw the ChatGPT artwork at its original canvas scale, preserving macOS-safe transparent padding; measure visible alpha only to position/size the decorative green/orange badge. Increment the bundle build number to help icon cache registration. The user confirmed the corrected Dock icon size and appearance on macOS.
 
 
 - **Swift Launcher stop control:** make stop state idempotent; suppress late “connected” logs during stop, disable redundant clicks, add a 5-second child-process watchdog and stop-state cleanup. Node supervisor now interrupts its 3-second poll immediately when SIGTERM arrives. The status only becomes “stopped” after process exit is confirmed.
@@ -11,7 +11,7 @@
 - **Icon sizing and Dock refresh:** normalize transparent padding in the source icon so the artwork occupies most of the icon canvas; explicitly load the bundled `.icns` at runtime and refresh Launch Services registration when installing. Existing pinned Dock shortcuts may still require manual removal and re-pinning.
 - **Documentation:** rewritten English README with language badges; complete `README.zh-CN.md`, both showing Terminal and native Launcher launch modes. Update acceptance boundaries and troubleshooting.
 - **Automated regression coverage:** `test/v03-polish.test.mjs` adds eight checks for stop UI, popover behavior, asset generation and bilingual docs.
-- **Acceptance:** the earlier v0.3.0 core recovery tests remain PASS (user-reported 4/4); these new v0.3.1 UI/icon changes still require native macOS visual and process recheck.
+- **Acceptance:** v0.3.0 core recovery tests PASS (user-reported 4/4); the v0.3.1 corrected Dock icon size was confirmed by the user. The revised stop-button and quota-popover UI are implemented but have not been separately re-verified in a documented macOS test.
 
 ## v0.3.0 — accepted for native Launcher workflow (2026-10-28)
 
