@@ -44,7 +44,7 @@ guard let sample = NSBitmapImageRep(
     isPlanar: false, colorSpaceName: .deviceRGB,
     bytesPerRow: 0, bitsPerPixel: 0
 ), let sampleContext = NSGraphicsContext(bitmapImageRep: sample) else {
-    fputs("无法读取 ChatGPT 图标像素\\n", stderr)
+    fputs("无法读取 ChatGPT 图标像素\n", stderr)
     exit(1)
 }
 NSGraphicsContext.saveGraphicsState()
@@ -85,7 +85,7 @@ if maxX >= minX && maxY >= minY {
                       y: CGFloat(side) / 2 - centerY * scale,
                       width: CGFloat(side) * scale,
                       height: CGFloat(side) * scale)
-    fputs("图标可见区域：\\(Int(visibleWidth))×\\(Int(visibleHeight))，缩放：\\(String(format: "%.2f", Double(scale)))x\\n", stderr)
+    fputs("图标可见区域：\(Int(visibleWidth))×\(Int(visibleHeight))，缩放：\(String(format: "%.2f", Double(scale)))x\n", stderr)
 }
 appIcon.draw(in: iconRect, from: NSRect(origin: .zero, size: appIcon.size),
              operation: .sourceOver, fraction: 1.0)
