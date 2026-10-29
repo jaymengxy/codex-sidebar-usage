@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline';
 import { dirname, delimiter, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import { normalizeRateLimits } from './rate-limits.mjs';
+import { tr } from './i18n.mjs';
 
 const DEFAULT_BUNDLED = '/Applications/ChatGPT.app/Contents/Resources/codex';
 
@@ -35,7 +36,7 @@ export async function resolveCodexCommand(explicitPath, options = {}) {
   const chosen = explicitPath || env.CSU_CODEX_CLI_PATH;
   if (chosen) {
     if (!isAbsolute(chosen) || !(await isExecutable(chosen))) {
-      throw new Error(`Codex 可执行文件不可用：${chosen}。请在 Launcher 中选择正确的 Codex 文件（终端执行 command -v codex 可查询）。`);
+      throw new Error(`${tr('Codex 可执行文件不可用', 'Codex executable is unavailable')}: ${chosen}. ${tr('请在 Launcher 中选择正确的 Codex 文件（终端执行 command -v codex 可查询）。', 'Select the correct Codex file in the Launcher (use command -v codex to locate it).')}`);
     }
     return chosen;
   }
@@ -56,9 +57,7 @@ export async function resolveCodexCommand(explicitPath, options = {}) {
     if (await isExecutable(file)) return file;
   }
   throw new Error(
-    '找不到 Codex CLI（不是额度接口错误）。请在终端运行 command -v codex，' +
-    '然后在 Codex Usage Launcher 点击「选择 Codex…」指定该文件。' +
-    '如果终端也找不到，请先安装或恢复 Codex CLI。'
+    tr('找不到 Codex CLI（不是额度接口错误）。请在终端运行 command -v codex，然后在 Codex Usage Launcher 点击「选择 Codex…」指定该文件。如果终端也找不到，请先安装或恢复 Codex CLI。', 'Codex CLI could not be found. Run command -v codex in Terminal, then use Select Codex… in the Launcher. If Terminal cannot find it, install or restore the Codex CLI.')
   );
 }
 
@@ -92,14 +91,14 @@ export class CodexAppServer {
       const entry = this.#pending.get(msg.id);
       this.#pending.delete(msg.id);
       clearTimeout(entry.timer);
-      if (msg.error) entry.reject(new Error(`App Server RPC ${msg.error.code ?? ''}: ${String(msg.error.message ?? '请求失败')}`));
+      if (msg.error) entry.reject(new Error(`App Server RPC ${msg.error.code ?? ''}: ${String(msg.error.message ?? tr('请求失败','request failed'))}`));
       else entry.resolve(msg.result);
     });
     // Do not log stderr; it may contain account or diagnostic information.
     this.#child.stderr.resume();
     this.#child.on('error', error => this.#rejectPending(
-      `App Server 启动失败（${this.command}）：${error.code ?? error.message}；请确认所选 Codex CLI 可执行。`));
-    this.#child.on('exit', () => this.#rejectPending('App Server 已退出'));
+      `${tr('App Server 启动失败', 'App Server failed to start')} (${this.command}): ${error.code ?? error.message}; ${tr('请确认所选 Codex CLI 可执行。','check that the selected Codex CLI is executable.')}`));
+    this.#child.on('exit', () => this.#rejectPending(tr('App Server 已退出', 'App Server exited')));
 
     await this.request('initialize', {
       clientInfo: { name: 'codex_sidebar_usage', title: 'Codex Sidebar Usage', version: '0.2.0' },
@@ -117,7 +116,7 @@ export class CodexAppServer {
   }
 
   #send(message) {
-    if (!this.#child?.stdin.writable) throw new Error('App Server stdin 不可用');
+    if (!this.#child?.stdin.writable) throw new Error(tr('App Server stdin 不可用', 'App Server stdin is unavailable'));
     this.#child.stdin.write(`${JSON.stringify(message)}\n`);
   }
 
@@ -126,7 +125,7 @@ export class CodexAppServer {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.#pending.delete(id);
-        reject(new Error(`App Server ${method} 超时`));
+        reject(new Error(`App Server ${method} ${tr('超时', 'timed out')}`));
       }, timeoutMs);
       this.#pending.set(id, { resolve, reject, timer });
       try { this.#send({ id, method, ...(params === undefined ? {} : { params }) }); }
@@ -139,14 +138,14 @@ export class CodexAppServer {
   }
 
   async readLimits() {
-    if (!this.#ready) throw new Error('App Server 尚未初始化');
+    if (!this.#ready) throw new Error(tr('App Server 尚未初始化', 'App Server is not initialized'));
     const result = await this.request('account/rateLimits/read');
     return normalizeRateLimits(result);
   }
 
   close() {
     this.#ready = false;
-    this.#rejectPending('App Server 已关闭');
+    this.#rejectPending(tr('App Server 已关闭', 'App Server is closed'));
     if (this.#child && !this.#child.killed) this.#child.kill('SIGTERM');
   }
 }
