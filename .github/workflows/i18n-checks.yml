@@ -1,0 +1,42 @@
+name: v0.3.2 Internationalization Checks
+
+on:
+  push:
+    branches:
+      - feat/i18n-v0.3.2
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  node-and-shell:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [en, zh]
+    env:
+      CSU_LANG: ${{ matrix.language }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Node syntax and tests
+        run: |
+          npm run check
+          npm test
+      - name: Shell syntax
+        run: |
+          bash -n scripts/locale.sh scripts/build-macos-launcher.sh scripts/install-macos-launcher.sh
+
+  swift-syntax:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift AppKit compilation
+        run: |
+          swiftc -O -framework AppKit macos/Launcher.swift -o /tmp/CodexUsageLauncher
+          swiftc -O -framework AppKit macos/generate-icon.swift -o /tmp/CodexUsageIconGenerator
