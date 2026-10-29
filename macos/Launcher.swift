@@ -1,6 +1,11 @@
 import AppKit
 import Foundation
 
+enum L {
+    static var isChinese: Bool { (Locale.preferredLanguages.first ?? "en").lowercased().hasPrefix("zh") }
+    static func tr(_ zh: String, _ en: String) -> String { isChinese ? zh : en }
+}
+
 /// Native macOS front-end for the bundled, read-only Node.js quota bridge.
 /// The helper owns ChatGPT/CDP startup; this app never modifies ChatGPT.app.
 final class LauncherDelegate: NSObject, NSApplicationDelegate {
@@ -73,31 +78,31 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         window.center()
         window.isReleasedWhenClosed = false
 
-        let title = NSTextField(labelWithString: "Codex 侧栏额度")
+        let title = NSTextField(labelWithString: L.tr("Codex 侧栏额度", "Codex Sidebar Usage"))
         title.font = NSFont.boldSystemFont(ofSize: 19)
 
-        statusLabel = NSTextField(labelWithString: "尚未启动")
+        statusLabel = NSTextField(labelWithString: L.tr("尚未启动", "Not started"))
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.maximumNumberOfLines = 3
 
-        startButton = NSButton(title: "启动监控", target: self, action: #selector(startMonitor(_:)))
+        startButton = NSButton(title: L.tr("启动监控", "Start Monitor"), target: self, action: #selector(startMonitor(_:)))
         startButton.bezelStyle = .rounded
         startButton.keyEquivalent = "\r"
 
-        stopButton = NSButton(title: "停止监控", target: self, action: #selector(stopMonitor(_:)))
+        stopButton = NSButton(title: L.tr("停止监控", "Stop Monitor"), target: self, action: #selector(stopMonitor(_:)))
         stopButton.bezelStyle = .rounded
         stopButton.isEnabled = false
 
-        nodeButton = NSButton(title: "选择 Node…", target: self, action: #selector(chooseNode(_:)))
+        nodeButton = NSButton(title: L.tr("选择 Node…", "Select Node…"), target: self, action: #selector(chooseNode(_:)))
         nodeButton.bezelStyle = .rounded
-        codexButton = NSButton(title: "选择 Codex…", target: self, action: #selector(chooseCodex(_:)))
+        codexButton = NSButton(title: L.tr("选择 Codex…", "Select Codex…"), target: self, action: #selector(chooseCodex(_:)))
         codexButton.bezelStyle = .rounded
         let buttons = NSStackView(views: [startButton, stopButton, nodeButton, codexButton])
         buttons.orientation = .horizontal
         buttons.spacing = 12
 
-        let caption = NSTextField(labelWithString: "停止或退出本启动器不会退出 ChatGPT。日志只保存在当前窗口。")
+        let caption = NSTextField(labelWithString: L.tr("停止或退出本启动器不会退出 ChatGPT。日志只保存在当前窗口。", "Stopping or quitting this Launcher will not quit ChatGPT. Logs are kept only in this window."))
         caption.font = NSFont.systemFont(ofSize: 11)
         caption.textColor = .secondaryLabelColor
         caption.lineBreakMode = .byWordWrapping
@@ -169,9 +174,10 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
             }
             let message = String(decoding: data, as: UTF8.self)
             DispatchQueue.main.async { [weak self] in
-                self?.appendLog(message)
-                if self?.stopping == false && (message.contains("已连接 ChatGPT") || message.contains("额度组件已注入")) {
-                    self?.setStatus("额度监控运行中 · 已连接 ChatGPT", running: true)
+                let humanLog = message.split(separator: "\n").filter { !$0.hasPrefix("CSU_EVENT:") }.joined(separator: "\n")
+                if !humanLog.isEmpty { self?.appendLog(humanLog) }
+                if self?.stopping == false && (message.contains("CSU_EVENT:connected") || message.contains("CSU_EVENT:injected")) {
+                    self?.setStatus(L.tr("额度监控运行中 · 已连接 ChatGPT", "Monitor running · Connected to ChatGPT"), running: true)
                 }
             }
         }
@@ -179,8 +185,8 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func chooseNode(_ sender: Any?) {
         let panel = NSOpenPanel()
-        panel.title = "选择 Node.js 22+ 可执行文件"
-        panel.prompt = "使用这个 Node"
+        panel.title = L.tr("选择 Node.js 22+ 可执行文件", "Select the Node.js 22+ executable")
+        panel.prompt = L.tr("使用这个 Node", "Use this Node")
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
@@ -188,19 +194,19 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         panel.beginSheetModal(for: window) { [weak self] result in
             guard result == .OK, let path = panel.url?.path else { return }
             guard FileManager.default.isExecutableFile(atPath: path) else {
-                self?.setStatus("所选文件不可执行，请选择 Node.js 22+ 的 node 文件。", running: false)
+                self?.setStatus(L.tr("所选文件不可执行，请选择 Node.js 22+ 的 node 文件。", "The selected file is not executable. Choose a Node.js 22+ binary."), running: false)
                 return
             }
             UserDefaults.standard.set(path, forKey: "CSUNodeOverride")
-            self?.appendLog("已设置 Node 路径：\(path)")
-            if self?.helper == nil { self?.setStatus("Node 路径已设置，可以启动监控。", running: false) }
+            self?.appendLog(L.tr("已设置 Node 路径：\(path)", "Node path set: \(path)"))
+            if self?.helper == nil { self?.setStatus(L.tr("Node 路径已设置，可以启动监控。", "Node path saved. Ready to start monitoring."), running: false) }
         }
     }
 
     @objc private func chooseCodex(_ sender: Any?) {
         let panel = NSOpenPanel()
-        panel.title = "选择 Codex CLI 可执行文件（终端执行 command -v codex 可查找）"
-        panel.prompt = "使用这个 Codex"
+        panel.title = L.tr("选择 Codex CLI 可执行文件（终端执行 command -v codex 可查找）", "Select Codex CLI executable (locate with command -v codex)")
+        panel.prompt = L.tr("使用这个 Codex", "Use this Codex")
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
@@ -208,15 +214,15 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         panel.beginSheetModal(for: window) { [weak self] result in
             guard result == .OK, let path = panel.url?.path else { return }
             guard FileManager.default.isExecutableFile(atPath: path) else {
-                self?.setStatus("所选 Codex 文件不可执行，请重新选择。", running: self?.helper != nil)
+                self?.setStatus(L.tr("所选 Codex 文件不可执行，请重新选择。", "The selected Codex file is not executable. Choose another file."), running: self?.helper != nil)
                 return
             }
             UserDefaults.standard.set(path, forKey: "CSUCodexOverride")
-            self?.appendLog("已设置 Codex CLI 路径：\(path)")
+            self?.appendLog(L.tr("已设置 Codex CLI 路径：\(path)", "Codex CLI path set: \(path)"))
             if self?.helper == nil {
-                self?.setStatus("Codex 路径已设置，点击启动监控。", running: false)
+                self?.setStatus(L.tr("Codex 路径已设置，点击启动监控。", "Codex path saved. Click Start Monitor."), running: false)
             } else {
-                self?.appendLog("请先停止监控、再启动，新的路径才会生效。")
+                self?.appendLog(L.tr("请先停止监控、再启动，新的路径才会生效。", "Restart monitoring to apply the new Codex path."))
             }
         }
     }
@@ -224,19 +230,19 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
     @objc private func startMonitor(_ sender: Any?) {
         guard helper == nil else { return }
         guard let node = nodePath, FileManager.default.isExecutableFile(atPath: node) else {
-            setStatus("Node.js 路径已失效：请在终端重新构建 Launcher（Node 22+）。", running: false)
+            setStatus(L.tr("Node.js 路径已失效：请在终端重新构建 Launcher（Node 22+）。", "Node.js path is invalid. Rebuild the Launcher with Node.js 22+ in Terminal."), running: false)
             return
         }
         guard let root = runtimeRoot,
               FileManager.default.fileExists(atPath: root.appendingPathComponent("scripts/launch.mjs").path) else {
-            setStatus("启动器缺少内置 JS 资源，请重新构建。", running: false)
+            setStatus(L.tr("启动器缺少内置 JS 资源，请重新构建。", "The Launcher is missing bundled JS files. Please rebuild it."), running: false)
             return
         }
         // Older optional LaunchAgent manages the same bridge. Never run both.
         let oldAgent = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/LaunchAgents/dev.paperauk.codex-sidebar-usage.plist")
         if FileManager.default.fileExists(atPath: oldAgent.path) {
-            setStatus("检测到旧版登录启动项。请先在项目中执行 npm run login:uninstall，再启动本应用。", running: false)
+            setStatus(L.tr("检测到旧版登录启动项。请先在项目中执行 npm run login:uninstall，再启动本应用。", "A legacy login agent was found. Run npm run login:uninstall before using this app."), running: false)
             return
         }
 
@@ -248,6 +254,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         var environment = ProcessInfo.processInfo.environment
         // Never send a helper-specific CLI override to ChatGPT itself.
         environment.removeValue(forKey: "CODEX_CLI_PATH")
+        environment["CSU_LANG"] = L.isChinese ? "zh" : "en"
         if let codex = codexPath { environment["CSU_CODEX_CLI_PATH"] = codex }
         process.environment = environment
         let out = Pipe()
@@ -269,15 +276,15 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
             try process.run()
             helper = process
             stopping = false
-            setStatus("启动中，正在检测 ChatGPT / CDP…", running: true)
-            appendLog("Launcher 已启动后台额度监控。")
+            setStatus(L.tr("启动中，正在检测 ChatGPT / CDP…", "Starting · Detecting ChatGPT / CDP…"), running: true)
+            appendLog(L.tr("Launcher 已启动后台额度监控。", "Launcher started the background quota monitor."))
         } catch {
             out.fileHandleForReading.readabilityHandler = nil
             err.fileHandleForReading.readabilityHandler = nil
             stdoutPipe = nil
             stderrPipe = nil
             helper = nil
-            setStatus("无法启动 Node：\(error.localizedDescription)", running: false)
+            setStatus(L.tr("无法启动 Node：\(error.localizedDescription)", "Unable to start Node: \(error.localizedDescription)"), running: false)
         }
     }
 
@@ -291,7 +298,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         stderrPipe?.fileHandleForReading.readabilityHandler = nil
         stdoutPipe = nil
         stderrPipe = nil
-        setStatus(stopping ? "监控已停止（ChatGPT 保持运行）" : "额度监控已退出（代码 \(code)），请查看日志", running: false)
+        setStatus(stopping ? L.tr("监控已停止（ChatGPT 保持运行）", "Monitor stopped (ChatGPT remains open)") : L.tr("额度监控已退出（代码 \(code)），请查看日志", "Quota monitor exited (code \(code)); see log"), running: false)
         stopping = false
     }
 
@@ -299,7 +306,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
         guard let process = helper else { return }
         guard !stopping else { return } // A second click must not be necessary.
         stopping = true
-        setStatus("正在停止监控…", running: true)
+        setStatus(L.tr("正在停止监控…", "Stopping monitor…"), running: true)
         stopButton.isEnabled = false
 
         if !process.isRunning {
@@ -313,7 +320,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
                 self.finishMonitorExit(code: process.terminationStatus)
             } else {
                 // Do not claim stopped while the helper is still running.
-                self.setStatus("等待监控进程退出…如持续无响应请查看日志", running: true)
+                self.setStatus(L.tr("等待监控进程退出…如持续无响应请查看日志", "Waiting for the monitor to exit. Check the log if it stays running."), running: true)
                 self.stopButton.isEnabled = true
                 self.stopping = false
             }
