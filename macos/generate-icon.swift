@@ -34,10 +34,10 @@ NSBezierPath(rect: frame).fill()
 let appIcon = NSWorkspace.shared.icon(forFile: chatGPTPath)
 appIcon.size = frame.size
 
-// macOS application icons often contain transparent safe-area padding. Drawing
-// their entire bitmap into 1024x1024 preserves that inset and makes the icon
-// appear noticeably smaller than the tile shown in Finder and the Dock.
-// Sample the ALPHA footprint first, then scale the visible artwork to fit.
+// Match the *native* macOS app icon footprint. Apple's standard icon uses
+// intentional transparent inset: do not normalize it to 98% of the canvas.
+// Doing so enlarged the Launcher ~18% relative to ChatGPT in the Dock.
+// We sample alpha ONLY to place the bars inside the original artwork.
 guard let sample = NSBitmapImageRep(
     bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side,
     bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
@@ -60,10 +60,9 @@ var minX = side
 var minY = side
 var maxX = -1
 var maxY = -1
-let sampleStep = 4
-for y in stride(from: 0, to: side, by: sampleStep) {
-    for x in stride(from: 0, to: side, by: sampleStep) {
-        // Ignore faint shadow pixels when computing the visible artwork bounds.
+for y in stride(from: 0, to: side, by: 4) {
+    for x in stride(from: 0, to: side, by: 4) {
+        // Ignore faint shadows; keep the visible tile bounds only.
         if let pixel = sample.colorAt(x: x, y: y), pixel.alphaComponent >= 0.08 {
             minX = min(minX, x)
             minY = min(minY, y)
@@ -72,46 +71,44 @@ for y in stride(from: 0, to: side, by: sampleStep) {
         }
     }
 }
-var iconRect = frame
-if maxX >= minX && maxY >= minY {
-    let visibleWidth = CGFloat(maxX - minX + sampleStep)
-    let visibleHeight = CGFloat(maxY - minY + sampleStep)
-    let visibleSize = max(visibleWidth, visibleHeight)
-    // Aim for ~98% occupancy without clipping the visible rounded silhouette.
-    let scale = max(1.0, min(CGFloat(side - 20) / visibleSize, 1.60))
-    let centerX = CGFloat(minX + maxX + sampleStep) / 2
-    let centerY = CGFloat(minY + maxY + sampleStep) / 2
-    iconRect = NSRect(x: CGFloat(side) / 2 - centerX * scale,
-                      y: CGFloat(side) / 2 - centerY * scale,
-                      width: CGFloat(side) * scale,
-                      height: CGFloat(side) * scale)
-    fputs("图标可见区域：\(Int(visibleWidth))×\(Int(visibleHeight))，缩放：\(String(format: "%.2f", Double(scale)))x\n", stderr)
-}
-appIcon.draw(in: iconRect, from: NSRect(origin: .zero, size: appIcon.size),
+let bounds = maxX >= minX && maxY >= minY
+    ? NSRect(x: CGFloat(minX), y: CGFloat(minY),
+             width: CGFloat(maxX - minX + 4), height: CGFloat(maxY - minY + 4))
+    : frame.insetBy(dx: 96, dy: 96)
+
+// Critical: use the exact unscaled image rectangle, matching the native icon.
+appIcon.draw(in: frame, from: NSRect(origin: .zero, size: appIcon.size),
              operation: .sourceOver, fraction: 1.0)
 
-// Lower-left 2-row bar plate. The fills are static visual identifiers,
-// not current account quota; data lives in the actual sidebar widget.
-let plate = NSBezierPath(roundedRect: NSRect(x: 82, y: 85, width: 450, height: 210),
-                         xRadius: 47, yRadius: 47)
+// The badge is proportional to the *visible* native tile. Keep it comfortably
+// inside the rounded-square artwork instead of enlarging the square itself.
+let badgeWidth = bounds.width * 0.45
+let badgeHeight = bounds.height * 0.19
+let badgeX = bounds.minX + bounds.width * 0.045
+let badgeY = bounds.minY + bounds.height * 0.04
+let badge = NSRect(x: badgeX, y: badgeY, width: badgeWidth, height: badgeHeight)
+let plate = NSBezierPath(roundedRect: badge,
+                         xRadius: badge.height * 0.20, yRadius: badge.height * 0.20)
 NSColor(calibratedWhite: 0.07, alpha: 0.79).setFill()
 plate.fill()
 
-func bar(y: CGFloat, fraction: CGFloat, red: CGFloat, green: CGFloat, blue: CGFloat) {
-    let x: CGFloat = 126
-    let width: CGFloat = 356
-    let height: CGFloat = 34
-    let track = NSBezierPath(roundedRect: NSRect(x: x, y: y, width: width, height: height),
-                              xRadius: height / 2, yRadius: height / 2)
+func bar(row: Int, fraction: CGFloat, red: CGFloat, green: CGFloat, blue: CGFloat) {
+    let barWidth = badge.width * 0.78
+    let barHeight = badge.height * 0.16
+    let barX = badge.minX + badge.width * 0.11
+    let barY = badge.minY + badge.height * (row == 0 ? 0.59 : 0.29)
+    let track = NSBezierPath(roundedRect: NSRect(x: barX, y: barY, width: barWidth, height: barHeight),
+                             xRadius: barHeight / 2, yRadius: barHeight / 2)
     NSColor(calibratedWhite: 1, alpha: 0.28).setFill()
     track.fill()
-    let fill = NSBezierPath(roundedRect: NSRect(x: x, y: y, width: width * fraction, height: height),
-                             xRadius: height / 2, yRadius: height / 2)
+    let fill = NSBezierPath(roundedRect: NSRect(x: barX, y: barY, width: barWidth * fraction, height: barHeight),
+                            xRadius: barHeight / 2, yRadius: barHeight / 2)
     NSColor(calibratedRed: red, green: green, blue: blue, alpha: 1).setFill()
     fill.fill()
 }
-bar(y: 207, fraction: 0.74, red: 22/255, green: 163/255, blue: 74/255) // 5h #16A34A
-bar(y: 145, fraction: 0.48, red: 217/255, green: 119/255, blue: 6/255) // 7d #D97706
+bar(row: 0, fraction: 0.74, red: 22/255, green: 163/255, blue: 74/255) // 5h #16A34A
+bar(row: 1, fraction: 0.48, red: 217/255, green: 119/255, blue: 6/255) // 7d #D97706
+
 
 context.flushGraphics()
 NSGraphicsContext.restoreGraphicsState()
