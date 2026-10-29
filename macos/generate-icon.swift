@@ -1,6 +1,10 @@
 import AppKit
 import Foundation
 
+func localized(_ zh: String, _ en: String) -> String {
+    (Locale.preferredLanguages.first ?? "en").lowercased().hasPrefix("zh") ? zh : en
+}
+
 // Generates a local composite icon from the user's INSTALLED ChatGPT.app icon.
 // Never check in or redistribute the extracted proprietary ChatGPT artwork.
 // The two fixed bars distinguish this unofficial launcher and are decorative.
@@ -11,7 +15,7 @@ guard CommandLine.arguments.count == 3 else {
 let chatGPTPath = CommandLine.arguments[1]
 let outputPath = CommandLine.arguments[2]
 guard FileManager.default.fileExists(atPath: chatGPTPath) else {
-    fputs("找不到 ChatGPT.app，无法生成图标：\(chatGPTPath)\n", stderr)
+    fputs(localized("找不到 ChatGPT.app，无法生成图标：\(chatGPTPath)\n", "ChatGPT.app not found: \(chatGPTPath)\n"), stderr)
     exit(1)
 }
 let side = 1024
@@ -21,7 +25,7 @@ guard let bitmap = NSBitmapImageRep(
     isPlanar: false, colorSpaceName: .deviceRGB,
     bytesPerRow: 0, bitsPerPixel: 0
 ), let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
-    fputs("无法创建 AppKit 图标画布\n", stderr)
+    fputs(localized("无法创建 AppKit 图标画布\n", "Cannot create AppKit icon canvas\n"), stderr)
     exit(1)
 }
 NSGraphicsContext.saveGraphicsState()
@@ -44,7 +48,7 @@ guard let sample = NSBitmapImageRep(
     isPlanar: false, colorSpaceName: .deviceRGB,
     bytesPerRow: 0, bitsPerPixel: 0
 ), let sampleContext = NSGraphicsContext(bitmapImageRep: sample) else {
-    fputs("无法读取 ChatGPT 图标像素\n", stderr)
+    fputs(localized("无法读取 ChatGPT 图标像素\n", "Cannot read ChatGPT icon pixels\n"), stderr)
     exit(1)
 }
 NSGraphicsContext.saveGraphicsState()
@@ -113,12 +117,12 @@ bar(row: 1, fraction: 0.48, red: 217/255, green: 119/255, blue: 6/255) // 7d #D9
 context.flushGraphics()
 NSGraphicsContext.restoreGraphicsState()
 guard let data = bitmap.representation(using: .png, properties: [:]) else {
-    fputs("图标 PNG 编码失败\n", stderr)
+    fputs(localized("图标 PNG 编码失败\n", "Failed to encode icon PNG\n"), stderr)
     exit(1)
 }
 do {
     try data.write(to: URL(fileURLWithPath: outputPath), options: .atomic)
 } catch {
-    fputs("图标写入失败：\(error.localizedDescription)\n", stderr)
+    fputs(localized("图标写入失败：\(error.localizedDescription)\n", "Could not save icon: \(error.localizedDescription)\n"), stderr)
     exit(1)
 }
