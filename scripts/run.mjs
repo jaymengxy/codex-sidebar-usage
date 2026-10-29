@@ -52,7 +52,7 @@ class CdpSession {
     if (this.closed || this.#socket?.readyState !== WebSocket.OPEN) return Promise.reject(new Error(tr('CDP 未连接', 'CDP not connected')));
     const id = ++this.#sequence;
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { this.#pending.delete(id); reject(new Error(`tr('CDP 请求超时', 'CDP request timed out') + `: ${method}`)); }, 5000);
+      const timer = setTimeout(() => { this.#pending.delete(id); reject(new Error(`${tr('CDP 请求超时', 'CDP request timed out')}: ${method}`)); }, 5000);
       this.#pending.set(id, { resolve, reject, timer });
       this.#socket.send(JSON.stringify({ id, method, params }));
     });
