@@ -79,8 +79,8 @@ test('both READMEs offer language switch and both usage modes', () => {
 });
 
 test('installer refreshes macOS app registration without resetting the Dock', () => {
-  assert.match(installer, /touch "\\$TARGET"/);
+  assert.match(installer, /touch "\$TARGET"/);
   assert.match(installer, /lsregister/);
-  assert.match(installer, /\\-f "\\$TARGET"/);
+  assert.match(installer, /-f "\$TARGET"/);
   assert.doesNotMatch(installer, /killall Dock/);
 });
