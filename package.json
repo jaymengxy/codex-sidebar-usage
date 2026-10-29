@@ -1,7 +1,7 @@
 {
   "name": "codex-sidebar-usage",
   "private": true,
-  "version": "0.3.1-dev",
+  "version": "0.3.1",
   "description": "Experimental compact usage indicator for the ChatGPT macOS Codex sidebar",
   "type": "module",
   "engines": {
