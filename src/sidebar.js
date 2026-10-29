@@ -56,10 +56,32 @@
   let popover = null;
   let popoverKey = null;
 
+  // Prefer the ChatGPT renderer's declared UI language. When the app does
+  // not expose it, fall back to the OS/browser locale; never inspect private
+  // ChatGPT storage, account settings or session data.
+  const systemLocale = navigator.languages?.[0] || navigator.language
+    || Intl.DateTimeFormat().resolvedOptions().locale || 'en';
+  const declaredLocale = () => document.documentElement.getAttribute('lang')?.trim();
+  const activeLocale = () => declaredLocale() || systemLocale;
+  const isChinese = () => /^zh(?:[-_]|$)/i.test(activeLocale());
+  const l = (zh, en) => isChinese() ? zh : en;
+  const formatDate = (date, timeOnly = false) => timeOnly
+    ? date.toLocaleTimeString(isChinese() ? 'zh-CN' : 'en-US')
+    : date.toLocaleString(isChinese() ? 'zh-CN' : 'en-US');
+  const setLabels = () => {
+    root.setAttribute('aria-label', l('Codex 使用额度', 'Codex usage limits'));
+    refreshButton.setAttribute('aria-label', l('刷新额度', 'Refresh Codex usage'));
+    for (const el of quotaElements) {
+      el.setAttribute('aria-label', el.dataset.quota === 'five'
+        ? l('查看 5 小时额度重置时间', 'View five-hour quota reset time')
+        : l('查看每周额度重置时间', 'View weekly quota reset time'));
+    }
+  };
+
   const formatReset = value => {
-    if (value == null || !Number.isFinite(Number(value))) return '未提供';
+    if (value == null || !Number.isFinite(Number(value))) return l('未提供', 'Unavailable');
     const date = new Date(Number(value) * 1000);
-    return Number.isNaN(date.getTime()) ? '未提供' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? l('未提供', 'Unavailable') : formatDate(date);
   };
   // Float outside the 36px rail; do not let narrow sidebar overflow clip it.
   const closePopover = () => {
@@ -68,17 +90,17 @@
     popoverKey = null;
   };
   const detailsFor = key => {
-    const label = key === 'five' ? '5 小时额度' : '每周额度';
+    const label = key === 'five' ? l('5 小时额度', 'Five-hour quota') : l('每周额度', 'Weekly quota');
     const windowData = key === 'five' ? snapshot?.fiveHour : snapshot?.weekly;
     const used = Number(windowData?.usedPercent);
     const valid = windowData != null && Number.isFinite(used) && used >= 0 && used <= 100;
-    const remain = valid ? `${Math.round(100 - used)}%` : '暂无数据';
+    const remain = valid ? `${Math.round(100 - used)}%` : l('暂无数据', 'No data');
     return [
       label,
-      `剩余：${remain}`,
-      `重置：${valid ? formatReset(windowData.resetsAt) : '未提供'}`,
-      `更新：${lastSuccess ? new Date(lastSuccess).toLocaleTimeString() : '尚未更新'}`,
-      ...(stale ? ['⚠ 读取失败，显示上次缓存'] : [])
+      `${l('剩余', 'Remaining')}: ${remain}`,
+      `${l('重置', 'Resets')}: ${valid ? formatReset(windowData.resetsAt) : l('未提供', 'Unavailable')}`,
+      `${l('更新', 'Updated')}: ${lastSuccess ? formatDate(new Date(lastSuccess), true) : l('尚未更新', 'Not updated')}`,
+      ...(stale ? [l('⚠ 读取失败，显示上次缓存', '⚠ Refresh failed; showing cached usage')] : [])
     ].join('\n');
   };
   const showPopover = (key, anchor) => {
@@ -127,7 +149,7 @@
   for (const el of quotaElements) {
     el.setAttribute('role','button');
     el.setAttribute('tabindex','0');
-    el.setAttribute('aria-label',el.dataset.quota === 'five' ? '查看 5 小时额度重置时间' : '查看每周额度重置时间');
+    // Accessible labels are set by setLabels() and updated when locale changes.
     el.addEventListener('click', onQuotaClick);
     el.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -142,6 +164,7 @@
   window.addEventListener('scroll', onGeometryChange, true);
 
   const render = () => {
+    setLabels();
     for (const [key, value] of [
       ['five', snapshot?.fiveHour],
       ['week', snapshot?.weekly],
@@ -157,20 +180,20 @@
       el.removeAttribute('title');
     }
     if (popover?.isConnected && popoverKey) popover.textContent = detailsFor(popoverKey);
-    refreshButton.title = (busy ? '正在刷新额度' : '点击立即刷新额度') +
-      (stale ? '\n上次更新失败' : '') +
-      (lastSuccess ? `\n最近更新：${new Date(lastSuccess).toLocaleTimeString()}` : '');
+    refreshButton.title = (busy ? l('正在刷新额度', 'Refreshing quota') : l('点击立即刷新额度', 'Refresh quota')) +
+      (stale ? '\n' + l('上次更新失败', 'Last refresh failed') : '') +
+      (lastSuccess ? `\n${l('最近更新', 'Last update')}: ${formatDate(new Date(lastSuccess), true)}` : '');
   };
 
   const askNative = () => new Promise((resolve, reject) => {
     if (typeof window.__codexUsageFetchV02 !== 'function') {
-      reject(new Error('本地额度读取桥接未连接'));
+      reject(new Error(l('本地额度读取桥接未连接', 'Local quota bridge is not connected')));
       return;
     }
     const id = `request-${++nextId}`;
     const timer = setTimeout(() => {
       outstanding.delete(id);
-      reject(new Error('读取额度超时'));
+      reject(new Error(l('读取额度超时', 'Quota request timed out')));
     }, 16000);
     outstanding.set(id, { resolve, reject, timer });
     try { window.__codexUsageFetchV02(JSON.stringify({ id, action: 'read' })); }
@@ -196,7 +219,7 @@
     try {
       const data = await askNative();
       if (destroyed) return;
-      if (!data || typeof data !== 'object') throw new Error('额度响应格式错误');
+      if (!data || typeof data !== 'object') throw new Error(l('额度响应格式错误', 'Invalid quota response'));
       snapshot = data;
       stale = false;
       lastSuccess = Date.now();
@@ -219,6 +242,8 @@
   refreshButton.addEventListener('click', onClick);
   root.addEventListener('mouseenter', onHover);
   const timer = setInterval(() => void refresh('auto'), 120000);
+  const languageObserver = new MutationObserver(() => { if (!destroyed) render(); });
+  languageObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
   const controller = {
     receive(payload) {
       const { id, data, error } = payload || {};
@@ -232,6 +257,7 @@
     destroy() {
       destroyed = true;
       clearInterval(timer);
+      languageObserver.disconnect();
       refreshButton.removeEventListener('click', onClick);
       root.removeEventListener('mouseenter', onHover);
       for (const el of quotaElements) el.removeEventListener('click', onQuotaClick);
@@ -242,7 +268,7 @@
       closePopover();
       for (const [, entry] of outstanding) {
         clearTimeout(entry.timer);
-        entry.reject(new Error('额度组件已关闭'));
+        entry.reject(new Error(l('额度组件已关闭', 'Quota widget closed')));
       }
       outstanding.clear();
       root.remove();
@@ -252,5 +278,5 @@
   window.__codexUsageSidebarV02 = controller;
   render();
   void refresh('initial');
-  console.log('Codex usage sidebar v0.2 mounted; waiting for local App Server.');
+  console.log('Codex usage sidebar mounted; awaiting local App Server.');
 })();
