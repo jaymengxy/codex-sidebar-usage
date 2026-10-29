@@ -1,5 +1,7 @@
 # Codex Sidebar Usage
 
+**Latest release: v0.3.1** · [Releases](https://github.com/jaymengxy/codex-sidebar-usage/releases)
+
 [![English](https://img.shields.io/badge/README-English-377cfb)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-777777)](README.zh-CN.md)
 
 A lightweight, unofficial macOS utility that displays your **Codex usage limits directly in the left navigation bar of the ChatGPT desktop app**.
@@ -33,10 +35,10 @@ No third-party npm packages are required.
 ```bash
 git clone https://github.com/jaymengxy/codex-sidebar-usage.git
 cd codex-sidebar-usage
-git switch feat/auto-launch-v0.3
+git switch main
 ```
 
-The native Launcher version is currently on the `feat/auto-launch-v0.3` branch. The repository must be accessible to your GitHub account.
+The released Launcher is available on `main`. The repository must be accessible to your GitHub account.
 
 ## Option 1 — Start from Terminal
 
