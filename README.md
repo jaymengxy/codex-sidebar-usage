@@ -27,7 +27,7 @@ The percentages come from a Codex usage snapshot, so they may not change immedia
 
 ## Preview
 
-![Codex usage indicator in the ChatGPT sidebar with the quota reset-time panel](docs/images/sidebar-quota-preview.png)
+![Codex usage indicator in the ChatGPT sidebar with the quota reset-time panel](docs/images/sidebar-quota-preview-en.webp)
 
 ## Before you start
 
