@@ -21,6 +21,10 @@ See how much of your five-hour and weekly quota remains without opening the usag
 
 The percentages come from a Codex usage snapshot, so they may not change immediately after every request. If a quota window is unavailable, the indicator displays `--`.
 
+## Preview
+
+![Codex usage indicator in the ChatGPT sidebar with the quota reset-time panel](docs/images/sidebar-quota-preview.png)
+
 ## Before you start
 
 - **macOS 13 or newer**, with ChatGPT installed at `/Applications/ChatGPT.app`.

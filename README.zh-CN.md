@@ -19,6 +19,10 @@
 
 额度来自服务端用量快照，不保证每次请求后立即变化。无法获取某一时间窗口的数据时，将显示 `--`。
 
+## 界面预览
+
+![ChatGPT 左侧导航栏的 Codex 剩余额度与重置时间浮窗](docs/images/sidebar-quota-preview.png)
+
 ## 使用前准备
 
 - **macOS 13 或更高版本**，ChatGPT 安装在 `/Applications/ChatGPT.app`。
