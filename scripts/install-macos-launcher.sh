@@ -25,8 +25,16 @@ case "${1:-}" in
     mkdir -p "$HOME/Applications"
     if [[ -e "$TARGET" ]]; then check_existing; rm -rf -- "$TARGET"; fi
     ditto "$SOURCE" "$TARGET"
+    # Notify Finder / Launch Services of the installed bundle, without
+    # forcibly restarting Dock or altering the user's pinned items.
+    touch "$TARGET"
+    LSREGISTER='/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'
+    if [[ -x "$LSREGISTER" ]]; then
+      "$LSREGISTER" -f "$TARGET" >/dev/null 2>&1 || echo '提示：应用已安装，但 Launch Services 注册未完成。'
+    fi
     echo "安装完成：$TARGET"
-    echo 'Finder 中打开此应用，或拖到 Dock。更新 Node 或源代码后请重新构建并安装。'
+    echo '可以从 Finder 打开此应用，或将 ~/Applications 中的 Launcher 拖到 Dock。'
+    echo '如果 Dock 仍显示旧图标，请移除旧的 Dock 固定项，再从上述路径拖入新版。'
     ;;
   uninstall)
     if [[ -e "$TARGET" ]]; then check_existing; rm -rf -- "$TARGET"; fi
