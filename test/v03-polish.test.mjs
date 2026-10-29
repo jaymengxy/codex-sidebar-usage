@@ -57,11 +57,14 @@ test('native icon builds from installed ChatGPT icon and never checks in source 
   assert.match(icon, /NSWorkspace\.shared\.icon\(forFile: chatGPTPath\)/);
   assert.match(icon, /sample\.colorAt\(x: x, y: y\)/);
   assert.match(icon, /pixel\.alphaComponent >= 0\.08/);
-  assert.match(icon, /let visibleSize = max\(visibleWidth, visibleHeight\)/);
-  assert.match(icon, /appIcon\.draw\(in: iconRect/);
+  assert.match(icon, /appIcon\.draw\(in: frame/);
+  assert.doesNotMatch(icon, /appIcon\.draw\(in: iconRect/);
+  assert.doesNotMatch(icon, /let scale = max\(1\.0, min/);
+  assert.match(icon, /let badgeWidth = bounds\.width \* 0\.45/);
+  assert.match(icon, /let badgeHeight = bounds\.height \* 0\.19/);
   assert.match(swift, /NSApp\.applicationIconImage = iconImage/);
-  assert.match(icon, /bar\(y: 207, fraction: 0\.74/);
-  assert.match(icon, /bar\(y: 145, fraction: 0\.48/);
+  assert.match(icon, /bar\(row: 0, fraction: 0\.74/);
+  assert.match(icon, /bar\(row: 1, fraction: 0\.48/);
   assert.match(builder, /macos\/generate-icon\.swift/);
   assert.match(builder, /iconutil -c icns/);
   assert.match(builder, /Contents\/Resources\/AppIcon\.icns/);
