@@ -29,7 +29,7 @@ fi
 
 mkdir -p "$DEST/Contents/MacOS" "$DEST/Contents/Resources/runtime/src" "$DEST/Contents/Resources/runtime/scripts" "$DEST/Contents/Resources"
 cp "$ROOT/macos/Info.plist" "$DEST/Contents/Info.plist"
-cp "$ROOT/src/sidebar.js" "$ROOT/src/app-server.mjs" "$ROOT/src/rate-limits.mjs" "$ROOT/src/monitor-utils.mjs" "$DEST/Contents/Resources/runtime/src/"
+cp "$ROOT/src/sidebar.js" "$ROOT/src/app-server.mjs" "$ROOT/src/rate-limits.mjs" "$ROOT/src/monitor-utils.mjs" "$ROOT/src/i18n.mjs" "$DEST/Contents/Resources/runtime/src/"
 cp "$ROOT/scripts/run.mjs" "$ROOT/scripts/launch.mjs" "$DEST/Contents/Resources/runtime/scripts/"
 cp "$ROOT/package.json" "$DEST/Contents/Resources/runtime/package.json"
 
