@@ -1,13 +1,13 @@
 # Changelog
 
-## v0.3.2 — internationalization candidate (unreleased)
+## v0.3.2 — release
 
 - Swift/AppKit Launcher and macOS build/install scripts select Chinese for Chinese-preferred macOS systems and English otherwise.
 - Terminal quota diagnostics use the same locale with English fallback; Launcher connection state follows locale-independent machine event markers.
 - Quota reset popovers, tooltips, accessibility text and date formatting prefer ChatGPT renderer's declared page language, falling back to system/browser language.
 - No private ChatGPT preference or account storage is inspected. In-app language settings may not always update the renderer's `lang` attribute.
 - The native bundle includes the Node locale module and automated localization regression checks.
-- This work does not modify the existing v0.3.1 release. macOS end-to-end localization still requires manual verification.
+- Manual verification confirmed the English sidebar reset-time popover on the user's Mac. Automated CI validates Chinese and English Node output, Bash syntax, and Swift/AppKit compilation. Other ChatGPT language/system combinations are not independently device-verified.
 
 
 ## v0.3.1 — released (2026-10-29)
