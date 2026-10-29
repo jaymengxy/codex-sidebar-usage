@@ -1,16 +1,48 @@
 # Changelog
 
-## v0.2.1 (candidate)
+## v0.3.1 — released (2026-10-29)
 
-- Fix missing colored progress fill in the 52px sidebar: the `<span>` track is now an explicit block positioned as a layout container, and its `<span>` fill is a positioned block sized relative to the track.
-- Preserve the fixed palette: five-hour `#16A34A` (green), weekly `#D97706` (orange).
-- No change to Codex App Server quota fetching, CDP binding, auto/manual/hover refresh, or reset tooltips.
-- Add three CSS structure regression tests. Node syntax check and all 13 tests pass; still requires a macOS UI recheck.
+- **Native icon sizing correction (2026-10-29):** remove the 98%-occupancy source icon enlargement, which created a Launcher Dock icon about 18% bigger than native ChatGPT in a user screenshot. Draw the ChatGPT artwork at its original canvas scale, preserving macOS-safe transparent padding; measure visible alpha only to position/size the decorative green/orange badge. Increment the bundle build number to help icon cache registration. The user confirmed the corrected Dock icon size and appearance on macOS.
 
-## v0.2.0 (candidate)
 
-- Read-only Codex App Server quota bridge and local CDP widget updates.
+- **Swift Launcher stop control:** make stop state idempotent; suppress late “connected” logs during stop, disable redundant clicks, add a 5-second child-process watchdog and stop-state cleanup. Node supervisor now interrupts its 3-second poll immediately when SIGTERM arrives. The status only becomes “stopped” after process exit is confirmed.
+- **Quota interaction:** replace the question-mark hover cursor with the normal cursor. Click a five-hour or weekly quota to open an explicit reset-time popover; never create a duplicate while the same popover is open. Click elsewhere or press Esc to dismiss; keyboard Enter/Space supported. Remove the redundant native hover tooltip, update panel contents after successful refresh, and clean up events on widget removal.
+- **Native app icon:** generate AppIcon.icns at build time from the locally installed ChatGPT.app icon, overlaying two fixed decorative green/orange bars in the lower-left corner. Original ChatGPT logo bytes are not committed to the repository.
+- **Icon sizing and Dock refresh:** normalize transparent padding in the source icon so the artwork occupies most of the icon canvas; explicitly load the bundled `.icns` at runtime and refresh Launch Services registration when installing. Existing pinned Dock shortcuts may still require manual removal and re-pinning.
+- **Documentation:** rewritten English README with language badges; complete `README.zh-CN.md`, both showing Terminal and native Launcher launch modes. Update acceptance boundaries and troubleshooting.
+- **Automated regression coverage:** `test/v03-polish.test.mjs` adds eight checks for stop UI, popover behavior, asset generation and bilingual docs.
+- **Acceptance:** v0.3.0 core recovery tests PASS (user-reported 4/4); the v0.3.1 corrected Dock icon size was confirmed by the user. The revised stop-button and quota-popover UI are implemented but have not been separately re-verified in a documented macOS test.
+
+## v0.3.0 — accepted for native Launcher workflow (2026-10-28)
+
+**Mac acceptance:** user confirmed four of four core scenarios: widget auto-reinjection after removal, renderer reload recovery, full quit/restart using the native Swift Launcher, and exactly one widget with correct quota and refresh behavior. Also confirmed normal ChatGPT startup after the CLI environment isolation fix.
+
+### Features
+- Add native Swift/AppKit `Codex Usage Launcher.app` with double-click ChatGPT/CDP startup, quota monitor controls and log view; packages its JS runtime locally.
+- Add local CDP supervision (3s polling) with renderer/DOM reattachment and idempotent widget injection.
+- Add `npm run launch` one-terminal mode and optional, **not device-accepted**, legacy user LaunchAgent login workflow.
+- Keep existing five-hour / weekly quota UI and refresh mechanism.
+
+### Startup and compatibility fixes
+- Resolve the App Server executable to an absolute path, with GUI-selectable Codex CLI fallback; address GUI `ENOENT` caused by missing `PATH` entry.
+- Isolate quota-helper `CSU_CODEX_CLI_PATH` from ChatGPT's own `CODEX_CLI_PATH`; launch ChatGPT through macOS Launch Services to avoid interfering with native App Server initialization.
+- Maintain loopback-only CDP connection, no credential extraction, no app bundle modifications.
+
+### Verification / known limits
+- Prior development automation result: 40/40 Node tests PASS, Swift syntax checks PASS. No GitHub CI checks are currently configured for this PR.
+- User-reported macOS acceptance: 4/4 core recovery cases PASS. See [acceptance](docs/acceptance-v0.3.md).
+- Legacy LaunchAgent login cycle, non-CDP collision flow, alternative macOS/ChatGPT versions, notarization and long-term compatibility are **not verified**, not part of this acceptance claim.
+- The native app is ad-hoc signed for local use and depends on an installed Node.js 22+ runtime.
+
+## v0.2.1 — accepted
+
+- Correct progress fill geometry; five-hour `#16A34A` green and weekly `#D97706` orange.
+- User confirmed live quota UI and progress bar colors on macOS.
+
+## v0.2.0
+
+- Read-only Codex App Server quota bridge and automatic/manual/hover refresh.
 
 ## v0.1.0
 
-- Basic 52px side rail insertion prototype; manually accepted.
+- First narrow 52px rail DOM injection prototype, user accepted.

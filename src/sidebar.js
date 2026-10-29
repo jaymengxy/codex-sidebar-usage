@@ -27,7 +27,7 @@
   root.style.cssText = 'box-sizing:border-box;width:36px;max-width:36px;flex:0 0 auto;align-self:center;display:flex;flex-direction:column;align-items:center;gap:8px;color:inherit;';
   root.innerHTML = `
     <style>
-      #${WIDGET_ID} .quota{width:36px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:help}
+      #${WIDGET_ID} .quota{width:36px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default;user-select:none}
       #${WIDGET_ID} .label{font-size:9px;line-height:11px;opacity:.7}
       #${WIDGET_ID} .pct{font-size:11px;line-height:13px;font-weight:600;font-variant-numeric:tabular-nums}
       #${WIDGET_ID} .track{display:block;flex:0 0 auto;position:relative;width:32px;height:3px;border-radius:9px;background:color-mix(in srgb,currentColor 18%,transparent);overflow:hidden}
@@ -38,8 +38,8 @@
       #${WIDGET_ID} .reload:hover{background:color-mix(in srgb,currentColor 9%,transparent)}
       #${WIDGET_ID} .reload:disabled{cursor:wait;opacity:.5}
     </style>
-    <div class="quota" data-quota="five" title="正在读取额度"><span class="label">5h</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
-    <div class="quota" data-quota="week" title="正在读取额度"><span class="label">7d</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
+    <div class="quota" data-quota="five"><span class="label">5h</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
+    <div class="quota" data-quota="week"><span class="label">7d</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
     <button type="button" class="reload" aria-label="刷新额度" title="点击刷新额度">↻</button>
   `;
   nav.insertBefore(root, anchor);
@@ -53,16 +53,98 @@
   let lastSuccess = 0;
   let snapshot = null;
   let stale = false;
+  let popover = null;
+  let popoverKey = null;
 
   const formatReset = value => {
     if (value == null || !Number.isFinite(Number(value))) return '未提供';
     const date = new Date(Number(value) * 1000);
     return Number.isNaN(date.getTime()) ? '未提供' : date.toLocaleString();
   };
+  // Float outside the 36px rail; do not let narrow sidebar overflow clip it.
+  const closePopover = () => {
+    popover?.remove();
+    popover = null;
+    popoverKey = null;
+  };
+  const detailsFor = key => {
+    const label = key === 'five' ? '5 小时额度' : '每周额度';
+    const windowData = key === 'five' ? snapshot?.fiveHour : snapshot?.weekly;
+    const used = Number(windowData?.usedPercent);
+    const valid = windowData != null && Number.isFinite(used) && used >= 0 && used <= 100;
+    const remain = valid ? `${Math.round(100 - used)}%` : '暂无数据';
+    return [
+      label,
+      `剩余：${remain}`,
+      `重置：${valid ? formatReset(windowData.resetsAt) : '未提供'}`,
+      `更新：${lastSuccess ? new Date(lastSuccess).toLocaleTimeString() : '尚未更新'}`,
+      ...(stale ? ['⚠ 读取失败，显示上次缓存'] : [])
+    ].join('\n');
+  };
+  const showPopover = (key, anchor) => {
+    // Idempotent: clicking an already-open quota must not create another popover.
+    if (popover?.isConnected && popoverKey === key) return;
+    closePopover();
+    const rect = anchor.getBoundingClientRect();
+    const panel = document.createElement('div');
+    panel.id = 'codex-sidebar-usage-popover';
+    panel.setAttribute('role', 'status');
+    panel.setAttribute('aria-live', 'polite');
+    panel.style.cssText = [
+      'position:fixed','z-index:2147483640','width:max-content',
+      'min-width:190px','max-width:min(260px,calc(100vw - 20px))',
+      'white-space:pre-line','padding:12px 14px','box-sizing:border-box',
+      'border-radius:12px','border:1px solid color-mix(in srgb,currentColor 16%,transparent)',
+      'background:light-dark(#ffffff,#252525)','color:light-dark(#202124,#f5f5f5)',
+      'box-shadow:0 8px 28px rgba(0,0,0,.2)','font:12px/1.8 system-ui,sans-serif',
+      'pointer-events:auto'
+    ].join(';');
+    panel.style.colorScheme = getComputedStyle(document.documentElement).colorScheme.includes('dark')
+      || document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    panel.textContent = detailsFor(key);
+    document.body.appendChild(panel);
+    const box = panel.getBoundingClientRect();
+    const x = rect.right + 10 + box.width <= window.innerWidth - 8
+      ? rect.right + 10 : Math.max(8, rect.left - box.width - 10);
+    const y = Math.min(Math.max(8, rect.top - 6), Math.max(8, window.innerHeight - box.height - 8));
+    panel.style.left = `${x}px`;
+    panel.style.top = `${y}px`;
+    popover = panel;
+    popoverKey = key;
+  };
+  const onQuotaClick = event => {
+    const el = event.currentTarget;
+    const key = el.dataset.quota;
+    showPopover(key, el);
+  };
+  const onOutsidePointer = event => {
+    if (popover && !popover.contains(event.target) &&
+        !event.target.closest?.('#codex-sidebar-usage-widget [data-quota]')) closePopover();
+  };
+  const onKey = event => { if (event.key === 'Escape') closePopover(); };
+  const onGeometryChange = () => closePopover();
+  const quotaElements = [...root.querySelectorAll('[data-quota]')];
+  for (const el of quotaElements) {
+    el.setAttribute('role','button');
+    el.setAttribute('tabindex','0');
+    el.setAttribute('aria-label',el.dataset.quota === 'five' ? '查看 5 小时额度重置时间' : '查看每周额度重置时间');
+    el.addEventListener('click', onQuotaClick);
+    el.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        showPopover(el.dataset.quota, el);
+      }
+    });
+  }
+  document.addEventListener('pointerdown', onOutsidePointer, true);
+  document.addEventListener('keydown', onKey, true);
+  window.addEventListener('resize', onGeometryChange);
+  window.addEventListener('scroll', onGeometryChange, true);
+
   const render = () => {
-    for (const [key, label, value] of [
-      ['five', '5 小时', snapshot?.fiveHour],
-      ['week', '每周', snapshot?.weekly],
+    for (const [key, value] of [
+      ['five', snapshot?.fiveHour],
+      ['week', snapshot?.weekly],
     ]) {
       const el = root.querySelector(`[data-quota="${key}"]`);
       const used = Number(value?.usedPercent);
@@ -70,12 +152,11 @@
       const remaining = valid ? Math.max(0, Math.min(100, 100 - used)) : null;
       el.querySelector('.pct').textContent = remaining === null ? '--' : `${Math.round(remaining)}%`;
       el.querySelector('.fill').style.width = remaining === null ? '0%' : `${remaining}%`;
-      const reset = valid ? formatReset(value.resetsAt) : '未提供';
-      el.title = `${label}额度：${remaining === null ? '暂无数据' : `${Math.round(remaining)}% 剩余`}` +
-        `\n重置时间：${reset}` +
-        `\n最近成功更新：${lastSuccess ? new Date(lastSuccess).toLocaleTimeString() : '尚未更新'}` +
-        (stale ? '\n⚠ 读取失败，显示上次缓存的数据' : '');
+      // Reset information is presented in the explicit click popover.
+      // Avoid a second native title tooltip appearing on hover.
+      el.removeAttribute('title');
     }
+    if (popover?.isConnected && popoverKey) popover.textContent = detailsFor(popoverKey);
     refreshButton.title = (busy ? '正在刷新额度' : '点击立即刷新额度') +
       (stale ? '\n上次更新失败' : '') +
       (lastSuccess ? `\n最近更新：${new Date(lastSuccess).toLocaleTimeString()}` : '');
@@ -153,6 +234,12 @@
       clearInterval(timer);
       refreshButton.removeEventListener('click', onClick);
       root.removeEventListener('mouseenter', onHover);
+      for (const el of quotaElements) el.removeEventListener('click', onQuotaClick);
+      document.removeEventListener('pointerdown', onOutsidePointer, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('resize', onGeometryChange);
+      window.removeEventListener('scroll', onGeometryChange, true);
+      closePopover();
       for (const [, entry] of outstanding) {
         clearTimeout(entry.timer);
         entry.reject(new Error('额度组件已关闭'));

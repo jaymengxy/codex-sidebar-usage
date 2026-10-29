@@ -1,78 +1,161 @@
 # Codex Sidebar Usage
 
-An **unofficial, experimental** 52px sidebar quota widget for Codex in the ChatGPT macOS desktop app. No app bundle patches, third-party packages, or token extraction.
+**Latest release: v0.3.1** · [Releases](https://github.com/jaymengxy/codex-sidebar-usage/releases)
 
-## Acceptance status
+[![English](https://img.shields.io/badge/README-English-377cfb)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-777777)](README.zh-CN.md)
 
-- **v0.1 PASS (user tested):** main renderer CDP and 52px rail/36px avatar placement on ChatGPT `26.1021.31345` (`com.openai.codex`).
-- **v0.2 CANDIDATE (partial acceptance):** User confirmed live quota display; progress-bar colors required a CSS fix (0.2.1), pending macOS visual recheck. Snapshot refresh and other interaction details are still pending separate acceptance.
-- **v0.3 planned:** persistent startup and resilience to app updates.
+A lightweight, unofficial macOS utility that displays your **Codex usage limits directly in the left navigation bar of the ChatGPT desktop app**.
 
-This is not an official OpenAI extension; CDP renderer injection is unsupported and may break with application updates.
+See how much of your five-hour and weekly quota remains without opening the usage settings.
 
-## Requirements
+> This is an independent project, **not affiliated with or endorsed by OpenAI**. It uses an unsupported desktop debugging interface and may need updates when ChatGPT changes.
 
-- ChatGPT for macOS with CDP open at `127.0.0.1:9238` (user has validated this on version `26.1021.31345`).
-- Node.js 22+, no `npm install` required.
-- Signed-in Codex account accessible to the bundled `/Applications/ChatGPT.app/Contents/Resources/codex` app-server. If the binary is missing, a `codex` binary on `PATH` is tried; that may use a **different account**.
+## Features
 
-## Quick start
+- **Quota at a glance:** five-hour (5h) and weekly (7d) remaining percentages.
+- **Color-coded progress:** green for the five-hour quota and orange for the weekly quota.
+- **Reset details:** click a quota to view its remaining percentage, reset time, and last update. Click outside the panel or press **Esc** to close it.
+- **Refresh controls:** click ↻ to check for updated usage; the display also refreshes periodically and when you return to it.
+- **Automatic recovery:** the indicator comes back after the ChatGPT window reloads.
+- **Two ways to run:** use a single Terminal command, or build a native macOS Launcher that you can open from Finder or the Dock.
 
-1. Quit ChatGPT with `Cmd+Q`.
-2. Start the signed ChatGPT app with loopback-only CDP:
+The percentages come from a Codex usage snapshot, so they may not change immediately after every request. If a quota window is unavailable, the indicator displays `--`.
 
-   ```bash
-   APP="/Applications/ChatGPT.app"
-   EXE=$(plutil -extract CFBundleExecutable raw -o - "$APP/Contents/Info.plist")
-   "$APP/Contents/MacOS/$EXE" \
-      --remote-debugging-address=127.0.0.1 \
-      --remote-debugging-port=9238
-   ```
+## Before you start
 
-3. Open the Codex view; leave it visible. In the repository directory:
+- **macOS 13 or newer**, with ChatGPT installed at `/Applications/ChatGPT.app`.
+- **Node.js 22 or newer**. Check with `node --version`.
+- For the native Launcher only: **Xcode Command Line Tools**. Install with `xcode-select --install` if needed.
+- Access to a working Codex CLI/App Server account. The CLI used by this utility should be signed into the account whose usage you want to display.
 
-   ```bash
-   npm run check
-   npm test
-   npm run probe  # read-only, does not inject UI
-   ```
+No third-party npm packages are required.
 
-4. **Compare `probe` percentages with the built-in ChatGPT/Codex Usage display.** If they differ materially, do not proceed: it may be another account or an upstream reporting difference.
-5. To inject and keep the read-only bridge active:
+### Download
 
-   ```bash
-   npm start
-   ```
-
-   The narrow widget shows **remaining** (100 minus `usedPercent`), not consumed %. Hover on each value for reset timestamp and last successful update. Click ↻ to request a snapshot immediately (10s retry cooldown). Hover fetches only if last successful snapshot is 60+ seconds old. Automatic refresh checks every 120 seconds. This is a server snapshot, **not exact real-time accounting**.
-
-**Keep the terminal running** for refresh. `Ctrl+C` stops the helper; re-injection is needed after renderer reload/restart. The injected element can be removed without changing the app binary:
-
-```js
-window.__codexUsageSidebarV02?.destroy();
+```bash
+git clone https://github.com/jaymengxy/codex-sidebar-usage.git
+cd codex-sidebar-usage
+git switch main
 ```
 
-Note: `npm run inject-layout` only injects HTML, without the persistent quota bridge. To fetch quota, use `npm start`.
+The released Launcher is available on `main`. The repository must be accessible to your GitHub account.
 
-## Data source and trust boundary
+## Option 1 — Start from Terminal
 
-The local Node process launches Codex App Server using its built-in **read-only** `account/rateLimits/read` RPC. It does not inspect or copy auth files, and communicates with the ChatGPT renderer only over an already enabled CDP loopback port. CDP binding carries a fixed `read` action and returns normalized **usage % + reset timestamps only**; no account IDs or credentials enter the renderer.
+This is the quickest way to try the indicator.
 
-5h is identified by `windowDurationMins=300`; weekly by `10080`. Missing windows show `--` (e.g., some accounts only expose a weekly bucket). Errors retain the last successful snapshot and show a stale warning in the tooltip.
+1. Quit ChatGPT completely with **Cmd+Q**.
+2. Open Terminal in the project folder and run:
 
-**Important:** API rates depend on the account authenticated for the spawned app-server, which is not guaranteed to be identical to the visible ChatGPT desktop profile. The manual `npm run probe` comparison is a required acceptance step.
+```bash
+npm run launch
+```
 
-### Security
+The command opens ChatGPT with the connection needed for the sidebar indicator and starts monitoring usage. **You do not need to enable CDP or debugging settings manually.**
 
-- Run CDP only on `127.0.0.1`, not a LAN interface. CDP grants broad renderer access to local processes.
-- Do not publish session tokens, `~/.codex/auth.json`, WebSocket URLs, or raw App Server responses.
-- `npm start` does not host an HTTP server and never makes direct requests from an embedded browser to OpenAI usage endpoints.
-- This code is a private utility, not an officially supported extension point.
+Keep this Terminal window open while using the indicator. To stop monitoring, press **Ctrl+C**. ChatGPT itself remains open.
 
-## Roadmap
+If ChatGPT is already open normally, quit it before running the command so the launcher can start it with the required connection.
 
-- [x] v0.1: DOM probe, 52px sidebar placement (user verified)
-- [ ] v0.2: quota bridge and refresh behavior (live quota values verified by user; 0.2.1 bar colors need visual recheck)
-- [ ] v0.3: restart/update compatibility, optional launcher
+## Option 2 — Build a native macOS Launcher
 
-See [architecture](docs/architecture.md) and [compatibility](docs/compatibility.md).
+Use this option if you prefer a regular macOS application that you can double-click without leaving Terminal open.
+
+### Build and install
+
+From the project folder, run:
+
+```bash
+npm run launcher:build
+npm run launcher:install
+```
+
+Then quit any normally running ChatGPT instance and open the Launcher:
+
+```bash
+open "$HOME/Applications/Codex Usage Launcher.app"
+```
+
+You can also open **Codex Usage Launcher.app** from Finder or drag it into the Dock.
+
+The Launcher automatically starts ChatGPT and the usage monitor. Its window includes **Start Monitor**, **Stop Monitor**, **Select Node…**, **Select Codex…**, and a diagnostic log.
+
+- Closing the Launcher window keeps monitoring active; click its Dock icon to reopen the window.
+- Choosing **Stop Monitor** or quitting the Launcher with **Cmd+Q** stops its monitoring process, but does not quit ChatGPT.
+- To use a different Node.js or Codex CLI executable, select it from the Launcher window.
+- After updating the project source, run `npm run launcher:build` and `npm run launcher:install` again.
+
+The Launcher bundles the monitoring scripts but uses the locally installed Node.js and Codex CLI. It does not alter the ChatGPT application.
+
+### Launcher icon
+
+When you build the app, the installer creates its icon from the ChatGPT icon **already installed on your Mac**, with two small green and orange bars in the lower-left corner. The bars are a visual identifier, not a live quota display. The original ChatGPT icon is not included in this repository.
+
+If the Dock still shows an older icon, quit the Launcher, remove its existing pinned Dock item, then drag `~/Applications/Codex Usage Launcher.app` from Finder into the Dock. If needed, run `killall Dock` to restart Dock without resetting its layout.
+
+To uninstall the Launcher application:
+
+```bash
+npm run launcher:uninstall
+```
+
+This removes the utility from `~/Applications`, not ChatGPT or your account data.
+
+## Which option should you use?
+
+| | Terminal | Native Launcher |
+| --- | --- | --- |
+| Best for | Trying the utility, development | Everyday use |
+| Setup | Node.js 22+ | Node.js 22+ and Xcode Command Line Tools |
+| Start | `npm run launch` | Double-click Launcher.app |
+| Keep Terminal open | Yes | No |
+| Stop monitoring | Ctrl+C | Stop Monitor or Cmd+Q |
+| Recover after window reload | Yes | Yes |
+
+Both options automatically start ChatGPT with the local debugging connection the indicator needs.
+
+## Troubleshooting
+
+**ChatGPT is already running, but the indicator won't start.** Quit ChatGPT with **Cmd+Q**, then open it through `npm run launch` or the native Launcher. Starting ChatGPT normally does not enable the indicator's debugging connection.
+
+**The Launcher cannot find Node.js or Codex.** Check `node --version` and `command -v codex` in Terminal. Use **Select Node…** or **Select Codex…** in the Launcher to choose the executable, then start monitoring.
+
+**The indicator doesn't appear.** Make sure the ChatGPT main window is open, the monitoring process is running, and you haven't started a second copy of the monitor. If necessary, quit ChatGPT and relaunch it through one of the two options above.
+
+**The percentages differ from ChatGPT's usage page.** You can run `npm run probe` from the project folder to read a quota snapshot without opening ChatGPT. Check that the Codex CLI uses the intended account. Usage information may be delayed.
+
+**Can I start the utility when I log in to macOS?** The project includes a separate, optional LaunchAgent-based login workflow for advanced users. It should not run alongside the native Launcher. Refer to the [architecture notes](docs/architecture.md) before enabling it.
+
+## Advanced — Connect to an existing CDP-enabled ChatGPT
+
+**You can skip this section when using either recommended startup option above.**
+
+The utility connects to ChatGPT through the Chromium DevTools Protocol (**CDP**) on the loopback-only port `127.0.0.1:9238`. ChatGPT does not normally start with this port enabled; both launch options enable it automatically.
+
+If you specifically want to start ChatGPT yourself and attach the monitor separately:
+
+1. Quit ChatGPT completely.
+2. In one Terminal, start ChatGPT with CDP enabled:
+
+```bash
+/usr/bin/open -a "/Applications/ChatGPT.app" --args \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port=9238
+```
+
+3. In another Terminal, from the project folder, run:
+
+```bash
+npm start
+```
+
+Keep `npm start` running to maintain usage updates. This manual two-process setup is intended for advanced use; it is not required for normal installation.
+
+## Privacy, security and compatibility
+
+- CDP grants broad local debugging access. Keep it bound to **127.0.0.1**; never expose it on your network.
+- Usage data is read through Codex App Server's read-only `account/rateLimits/read` method. The project does not copy authentication files or place login tokens in the ChatGPT interface.
+- The native application is built and locally signed on your Mac. It is not notarized for public software distribution.
+- ChatGPT's internal interface may change. Compatibility with future releases is not guaranteed.
+
+[Architecture](docs/architecture.md) · [Compatibility](docs/compatibility.md) · [Changelog](CHANGELOG.md)

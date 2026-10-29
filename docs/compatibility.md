@@ -1,18 +1,34 @@
-# Version compatibility
+# Compatibility and device evidence
 
-## Observed target
+## Accepted environment (reported 2026-10-28)
 
-- macOS ChatGPT `26.1021.31345`, bundle ID `com.openai.codex`
-- CDP enabled by `--remote-debugging-address=127.0.0.1 --remote-debugging-port=9238`
-- Main renderer `app://-/index.html`
-- Rail `nav` class includes `group/sidebar-rail`; width 52px
-- Avatar image 24x24; content rail 36px
-- v0.1 layout accepted by user on target build.
-- v0.2 real quota bridge is a candidate; no Mac runtime acceptance yet.
+| Field | Observed |
+| --- | --- |
+| Host | User's macOS device |
+| ChatGPT build | `26.1021.31345` |
+| ChatGPT bundle ID | `com.openai.codex` |
+| Main renderer | `app://-/index.html` |
+| CDP endpoint | `127.0.0.1:9238` (loopback only) |
+| Sidebar | 52px nav rail / 36px widget area |
+| Native launcher | Locally built Swift/AppKit `.app` |
+| Node requirement | 22+ |
+| v0.1 DOM placement | User PASS |
+| v0.2.1 quota and progress colors | User PASS |
+| v0.3 native launch and recovery | User PASS (four core tests) |
 
-## Detect breakage
+User-confirmed v0.3 recovery tests: DOM widget deletion and return; renderer reload and return; complete quit and double-click launcher; exactly one widget with correct quota/refresh/colors. Earlier `ENOENT` and organization-settings errors were resolved in the local tested setup following absolute path resolution and App Server launch environment isolation.
 
-- If no rail or avatar is found, injection aborts rather than patching an arbitrary element.
-- Changes in Codex installation binary path may require `npm start -- --codex-path /absolute/path/to/codex`.
-- If CDP port is absent, start ChatGPT with the debug flags. Never expose CDP on a non-loopback address.
-- Do not confuse the main page with `avatar-overlay`, `detached-window`, or embedded webview targets.
+The separate `avatar-overlay` target and embedded webviews are not valid injection targets. The app may change this internal layout in later releases.
+
+## Device acceptance boundaries
+
+The four cases are **user-reported**. We did not remotely inspect or run the Mac UI. The tests do **not** independently establish legacy LaunchAgent login operation, all Start/Stop/Node chooser edge cases, starting when ChatGPT is already running without CDP, or compatibility with other ChatGPT builds. No GitHub CI check runs currently exist.
+
+See [acceptance-v0.3.md](acceptance-v0.3.md) for the complete acceptance record and follow-up gates.
+
+## Known limitations
+
+- Code has not been verified against future ChatGPT updates; CDP is an unofficial debugging interface, not an extension contract.
+- The locally built `.app` is ad-hoc signed and not notarized for general distribution; it depends on an installed Node 22+ executable path.
+- A helper already running separately should be stopped before using the GUI to avoid duplicate processes.
+- If ChatGPT is relaunched without CDP, injection cannot be guaranteed until it is restarted through the Launcher.
