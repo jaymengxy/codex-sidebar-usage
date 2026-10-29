@@ -23,6 +23,7 @@ test('native app refuses to run in parallel with legacy LaunchAgent', () => {
 test('build script bundles runtime files and signs locally', () => {
   assert.match(build, /swiftc -O -framework AppKit/);
   assert.match(build, /src\/sidebar\.js/);
+  assert.match(build, /src\/i18n\.mjs/);
   assert.match(build, /scripts\/run\.mjs/);
   assert.match(build, /scripts\/launch\.mjs/);
   assert.match(build, /plutil -insert CSUNodePath/);

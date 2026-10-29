@@ -5,6 +5,7 @@ import { dirname, resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { tr } from '../src/i18n.mjs';
 
 export const LABEL = 'dev.paperauk.codex-sidebar-usage';
 export const PLIST_PATH = join(homedir(), 'Library', 'LaunchAgents', `${LABEL}.plist`);
@@ -33,11 +34,11 @@ export function makePlist({node = process.execPath, root = REPO_ROOT, home = hom
 
 function launchctl(args) {
   const result = spawnSync('/bin/launchctl', args, { encoding: 'utf8' });
-  if (result.status !== 0) throw new Error((result.stderr || result.stdout || `launchctl ${args[0]} 失败`).trim());
+  if (result.status !== 0) throw new Error((result.stderr || result.stdout || `launchctl ${args[0]} ${tr('失败','failed')}`).trim());
 }
 
 export async function main(args = process.argv.slice(2)) {
-  if (process.platform !== 'darwin') throw new Error('登录启动项只支持 macOS');
+  if (process.platform !== 'darwin') throw new Error(tr('登录启动项只支持 macOS', 'Login items are supported on macOS only'));
   const action = args[0];
   if (!['install', 'uninstall', 'status'].includes(action)) {
     console.log('Usage: node scripts/login-item.mjs install|uninstall|status');
@@ -45,14 +46,14 @@ export async function main(args = process.argv.slice(2)) {
   }
   const domain = `gui/${process.getuid()}`;
   if (action === 'status') {
-    try { await access(PLIST_PATH); console.log('登录项已安装：' + PLIST_PATH); }
-    catch { console.log('登录项未安装'); }
+    try { await access(PLIST_PATH); console.log(tr('登录项已安装：', 'Login item installed: ') + PLIST_PATH); }
+    catch { console.log(tr('登录项未安装', 'Login item is not installed')); }
     return;
   }
   if (action === 'uninstall') {
     try { launchctl(['bootout', domain, PLIST_PATH]); } catch { /* may not be loaded */ }
     try { await unlink(PLIST_PATH); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-    console.log('登录项已卸载；不会修改或关闭 ChatGPT。');
+    console.log(tr('登录项已卸载；不会修改或关闭 ChatGPT。', 'Login item removed. ChatGPT remains unchanged and running.'));
     return;
   }
   await mkdir(dirname(PLIST_PATH), { recursive: true });
@@ -62,10 +63,10 @@ export async function main(args = process.argv.slice(2)) {
   try { launchctl(['bootout', domain, PLIST_PATH]); } catch { /* not running */ }
   await writeFile(PLIST_PATH, makePlist(), { mode: 0o600 });
   launchctl(['bootstrap', domain, PLIST_PATH]);
-  console.log('登录项已安装：' + PLIST_PATH);
-  console.log('请禁用 ChatGPT 自带的“登录时打开”，避免它先于本工具启动并占用无 CDP 的进程。');
+  console.log(tr('登录项已安装：', 'Login item installed: ') + PLIST_PATH);
+  console.log(tr('请禁用 ChatGPT 自带的“登录时打开”，避免它先于本工具启动并占用无 CDP 的进程。', 'Disable ChatGPT’s own Open at Login option, or it may start without CDP before this helper.'));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch(error => { console.error('登录项操作失败：' + error.message); process.exitCode = 1; });
+  main().catch(error => { console.error(tr('登录项操作失败：', 'Login item error: ') + error.message); process.exitCode = 1; });
 }

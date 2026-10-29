@@ -40,12 +40,12 @@ test('finds CLI from supplied PATH', async () => {
 
 test('invalid explicit CLI fails with a path-specific error', async () => {
   const options = make();
-  await assert.rejects(resolveCodexCommand('/missing/codex', options), /Codex 可执行文件不可用：\/missing\/codex/);
+  await assert.rejects(resolveCodexCommand('/missing/codex', options), /(Codex 可执行文件不可用|Codex executable is unavailable): \/missing\/codex/);
 });
 
 test('a nonabsolute CSU_CODEX_CLI_PATH is rejected rather than spawned', async () => {
   const options = make({env: {CSU_CODEX_CLI_PATH:'codex'}});
-  await assert.rejects(resolveCodexCommand(undefined, options), /Codex 可执行文件不可用：codex/);
+  await assert.rejects(resolveCodexCommand(undefined, options), /(Codex 可执行文件不可用|Codex executable is unavailable): codex/);
 });
 
 test('unavailable Codex CLI reports actionable instructions instead of ENOENT', async () => {

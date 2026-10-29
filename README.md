@@ -1,6 +1,6 @@
 # Codex Sidebar Usage
 
-**Latest release: v0.3.1** · [Releases](https://github.com/jaymengxy/codex-sidebar-usage/releases)
+**Latest release: v0.3.2** · [Releases](https://github.com/jaymengxy/codex-sidebar-usage/releases)
 
 [![English](https://img.shields.io/badge/README-English-377cfb)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-777777)](README.zh-CN.md)
 
@@ -9,6 +9,10 @@ A lightweight, unofficial macOS utility that displays your **Codex usage limits 
 See how much of your five-hour and weekly quota remains without opening the usage settings.
 
 > This is an independent project, **not affiliated with or endorsed by OpenAI**. It uses an unsupported desktop debugging interface and may need updates when ChatGPT changes.
+
+## Language support
+
+The macOS Launcher, terminal output and build/install messages automatically display **Chinese when macOS prefers a Chinese language**, or **English for other system languages**. The quota panel inside ChatGPT prefers the app renderer's declared language, falling back to the system/browser language when unavailable. No language setting is required. A separately chosen ChatGPT language may not always be reflected in the page's `lang` attribute.
 
 ## Features
 
@@ -23,7 +27,7 @@ The percentages come from a Codex usage snapshot, so they may not change immedia
 
 ## Preview
 
-![Codex usage indicator in the ChatGPT sidebar with the quota reset-time panel](docs/images/sidebar-quota-preview.png)
+![Codex usage indicator in the ChatGPT sidebar with the quota reset-time panel](docs/images/sidebar-quota-preview-en.webp)
 
 ## Before you start
 
@@ -154,6 +158,10 @@ npm start
 ```
 
 Keep `npm start` running to maintain usage updates. This manual two-process setup is intended for advanced use; it is not required for normal installation.
+
+## License and trademarks
+
+The project source code is licensed under the [MIT License](LICENSE). The license does **not** grant rights to third-party trademarks, artwork, logos, or the ChatGPT app. This utility is not affiliated with or endorsed by OpenAI. The custom Launcher icon is generated using artwork from the user's **locally installed** ChatGPT app; the repository does not distribute the original icon.
 
 ## Privacy, security and compatibility
 

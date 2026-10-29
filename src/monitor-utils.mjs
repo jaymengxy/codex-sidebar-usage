@@ -1,3 +1,4 @@
+import { tr } from './i18n.mjs';
 /** Pure CDP target discovery and URL checks; no side effects. */
 export const CDP_HOST = '127.0.0.1';
 export const CDP_PORT = 9238;
@@ -12,7 +13,7 @@ export function localWebSocketUrl(value, port = CDP_PORT) {
   const parsed = new URL(value);
   if (parsed.protocol !== 'ws:' || parsed.hostname !== CDP_HOST || Number(parsed.port) !== port ||
       !parsed.pathname.startsWith('/devtools/page/')) {
-    throw new Error('拒绝连接非本机主窗口 CDP WebSocket');
+    throw new Error(tr('拒绝连接非本机主窗口 CDP WebSocket', 'Refusing a non-local CDP WebSocket URL'));
   }
   return parsed.toString();
 }

@@ -47,7 +47,7 @@ test('never relaunches when CDP exists or ChatGPT already runs', async () => {
   let calls = 0;
   const mocks = { open: async () => { calls++; }, checkAccess: async () => {} };
   assert.equal(await ensureChatGPTStarted({ ...mocks, portOpen: async () => true, running: async () => false }), 'cdp-ready');
-  await assert.rejects(ensureChatGPTStarted({ ...mocks, portOpen: async () => false, running: async () => true }), /已运行/);
+  await assert.rejects(ensureChatGPTStarted({ ...mocks, portOpen: async () => false, running: async () => true }), /ChatGPT.*9238/);
   assert.equal(calls, 0);
 });
 

@@ -1,12 +1,18 @@
 # Codex Sidebar Usage
 
-**当前版本：v0.3.1** · [版本发布](https://github.com/jaymengxy/codex-sidebar-usage/releases)
+**当前版本：v0.3.2** · [版本发布](https://github.com/jaymengxy/codex-sidebar-usage/releases)
 
 [![English](https://img.shields.io/badge/README-English-777777)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-377cfb)](README.zh-CN.md)
 
 一个轻量的非官方 macOS 小工具，让你在 **ChatGPT 桌面客户端的左侧导航栏** 中直接查看 **Codex 使用额度**，无需反复打开用量设置页面。
 
 > 本项目由独立开发者维护，**并非 OpenAI 官方产品，也未获得 OpenAI 背书**。它使用桌面客户端的非公开调试接口，ChatGPT 更新后可能需要调整兼容性。
+
+## 多语言支持
+
+Launcher 窗口、终端运行日志、构建及安装提示会根据 **macOS 首选语言** 自动显示中文或英文：中文系统显示中文，其他语言显示英文。ChatGPT 内的额度组件与重置时间浮窗优先使用客户端页面声明的语言；如果页面未提供语言，则回退到系统语言。无需手动配置。
+
+部分 ChatGPT 版本可能不会把应用内单独设置的语言反映到页面的 `lang` 属性上，因此不能保证始终识别客户端独立语言设置。
 
 ## 功能介绍
 
@@ -162,6 +168,10 @@ npm start
 ```
 
 保持 `npm start` 运行，额度组件便能持续刷新。这种两进程方式主要用于高级操作，日常使用无需如此配置。
+
+## 开源许可和商标
+
+项目**自身编写的源代码**采用 [MIT License](LICENSE) 开源。MIT 不包含 ChatGPT、OpenAI 等第三方商标、标识、图形或官方应用资源的使用授权。本项目与 OpenAI 无关联，也未获得官方背书。自定义 Launcher 图标由用户在本机编译时使用本机已安装的 ChatGPT 图标生成，仓库不会分发原始图标素材。
 
 ## 隐私、安全与兼容性
 
