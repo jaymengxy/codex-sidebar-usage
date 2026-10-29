@@ -35,7 +35,7 @@ test('popover supports outside click, Escape, keyboard activation, and cleanup',
 });
 
 test('reset popover content follows quota snapshot refresh', () => {
-  assert.match(sidebar, /重置：/);
+  assert.match(sidebar, /l\('重置', 'Resets'\)/);
   assert.match(sidebar, /if \(popover\?\.isConnected && popoverKey\) popover\.textContent = detailsFor\(popoverKey\)/);
 });
 
