@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { run } from './run.mjs';
+import { tr } from '../src/i18n.mjs';
 
 const execFileAsync = promisify(execFile);
 export const CHATGPT_APP = '/Applications/ChatGPT.app';
@@ -49,7 +50,7 @@ export async function ensureChatGPTStarted({
 } = {}) {
   if (await portOpen()) return 'cdp-ready';
   if (await running()) {
-    throw new Error('ChatGPT 已运行但没有开放 9238 CDP。请 Cmd+Q 完全退出，再启动 Launcher；不会强制关闭 ChatGPT。');
+    throw new Error(tr('ChatGPT 已运行但没有开放 9238 CDP。请 Cmd+Q 完全退出，再启动 Launcher；不会强制关闭 ChatGPT。', 'ChatGPT is running without CDP on port 9238. Fully quit it with Cmd+Q, then start the Launcher. ChatGPT will not be force-closed.'));
   }
   await checkAccess(app, constants.R_OK);
   try {
@@ -57,15 +58,15 @@ export async function ensureChatGPTStarted({
       env: chatGPTLaunchEnvironment(env), timeout: 15000,
     });
   } catch (error) {
-    throw new Error(`无法通过 macOS Launch Services 启动 ChatGPT：${error.message}`);
+    throw new Error(`${tr('无法通过 macOS Launch Services 启动 ChatGPT', 'Could not start ChatGPT through macOS Launch Services')}: ${error.message}`);
   }
   return 'launched';
 }
 
 export async function launchAndRun() {
-  if (process.platform !== 'darwin') throw new Error('自动启动仅适用于 macOS');
+  if (process.platform !== 'darwin') throw new Error(tr('自动启动仅适用于 macOS', 'Automatic launch is supported on macOS only'));
   const action = await ensureChatGPTStarted();
-  console.log(action === 'launched' ? '已通过 macOS Launch Services 启动 ChatGPT（本机 CDP）' : '复用已开放 CDP 的 ChatGPT');
+  console.log(action === 'launched' ? tr('已通过 macOS Launch Services 启动 ChatGPT（本机 CDP）', 'Started ChatGPT through Launch Services (local CDP)') : tr('复用已开放 CDP 的 ChatGPT', 'Using the running ChatGPT CDP session'));
   await run([]);
 }
 
