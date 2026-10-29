@@ -33,6 +33,12 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        // Refresh the running app's Dock artwork explicitly. Existing pinned
+        // Dock items may still need to be unpinned and pinned once after upgrade.
+        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let iconImage = NSImage(contentsOf: iconURL) {
+            NSApp.applicationIconImage = iconImage
+        }
         buildWindow()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
