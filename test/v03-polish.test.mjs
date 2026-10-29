@@ -7,6 +7,7 @@ const swift = await readFile(new URL('../macos/Launcher.swift', import.meta.url)
 const icon = await readFile(new URL('../macos/generate-icon.swift', import.meta.url), 'utf8');
 const builder = await readFile(new URL('../scripts/build-macos-launcher.sh', import.meta.url), 'utf8');
 const plist = await readFile(new URL('../macos/Info.plist', import.meta.url), 'utf8');
+const installer = await readFile(new URL('../scripts/install-macos-launcher.sh', import.meta.url), 'utf8');
 const runner = await readFile(new URL('../scripts/run.mjs', import.meta.url), 'utf8');
 const en = await readFile(new URL('../README.md', import.meta.url), 'utf8');
 const zh = await readFile(new URL('../README.zh-CN.md', import.meta.url), 'utf8');
@@ -75,4 +76,11 @@ test('both READMEs offer language switch and both usage modes', () => {
     assert.match(text, /npm run launcher:build/);
     assert.match(text, /npm run launcher:install/);
   }
+});
+
+test('installer refreshes macOS app registration without resetting the Dock', () => {
+  assert.match(installer, /touch "\\$TARGET"/);
+  assert.match(installer, /lsregister/);
+  assert.match(installer, /\\-f "\\$TARGET"/);
+  assert.doesNotMatch(installer, /killall Dock/);
 });
