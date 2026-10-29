@@ -78,7 +78,7 @@ if maxX >= minX && maxY >= minY {
     let visibleHeight = CGFloat(maxY - minY + sampleStep)
     let visibleSize = max(visibleWidth, visibleHeight)
     // Aim for ~98% occupancy without clipping the visible rounded silhouette.
-    let scale = min(CGFloat(side - 20) / visibleSize, 1.60)
+    let scale = max(1.0, min(CGFloat(side - 20) / visibleSize, 1.60))
     let centerX = CGFloat(minX + maxX + sampleStep) / 2
     let centerY = CGFloat(minY + maxY + sampleStep) / 2
     iconRect = NSRect(x: CGFloat(side) / 2 - centerX * scale,
