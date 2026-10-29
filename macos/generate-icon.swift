@@ -33,7 +33,61 @@ NSBezierPath(rect: frame).fill()
 
 let appIcon = NSWorkspace.shared.icon(forFile: chatGPTPath)
 appIcon.size = frame.size
+
+// macOS application icons often contain transparent safe-area padding. Drawing
+// their entire bitmap into 1024x1024 preserves that inset and makes the icon
+// appear noticeably smaller than the tile shown in Finder and the Dock.
+// Sample the ALPHA footprint first, then scale the visible artwork to fit.
+guard let sample = NSBitmapImageRep(
+    bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side,
+    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+    isPlanar: false, colorSpaceName: .deviceRGB,
+    bytesPerRow: 0, bitsPerPixel: 0
+), let sampleContext = NSGraphicsContext(bitmapImageRep: sample) else {
+    fputs("无法读取 ChatGPT 图标像素\\n", stderr)
+    exit(1)
+}
+NSGraphicsContext.saveGraphicsState()
+NSGraphicsContext.current = sampleContext
+NSColor.clear.setFill()
+NSBezierPath(rect: frame).fill()
 appIcon.draw(in: frame, from: NSRect(origin: .zero, size: appIcon.size),
+             operation: .sourceOver, fraction: 1.0)
+sampleContext.flushGraphics()
+NSGraphicsContext.restoreGraphicsState()
+
+var minX = side
+var minY = side
+var maxX = -1
+var maxY = -1
+let sampleStep = 4
+for y in stride(from: 0, to: side, by: sampleStep) {
+    for x in stride(from: 0, to: side, by: sampleStep) {
+        // Ignore faint shadow pixels when computing the visible artwork bounds.
+        if let pixel = sample.colorAt(x: x, y: y), pixel.alphaComponent >= 0.08 {
+            minX = min(minX, x)
+            minY = min(minY, y)
+            maxX = max(maxX, x)
+            maxY = max(maxY, y)
+        }
+    }
+}
+var iconRect = frame
+if maxX >= minX && maxY >= minY {
+    let visibleWidth = CGFloat(maxX - minX + sampleStep)
+    let visibleHeight = CGFloat(maxY - minY + sampleStep)
+    let visibleSize = max(visibleWidth, visibleHeight)
+    // Aim for ~98% occupancy without clipping the visible rounded silhouette.
+    let scale = min(CGFloat(side - 20) / visibleSize, 1.60)
+    let centerX = CGFloat(minX + maxX + sampleStep) / 2
+    let centerY = CGFloat(minY + maxY + sampleStep) / 2
+    iconRect = NSRect(x: CGFloat(side) / 2 - centerX * scale,
+                      y: CGFloat(side) / 2 - centerY * scale,
+                      width: CGFloat(side) * scale,
+                      height: CGFloat(side) * scale)
+    fputs("图标可见区域：\\(Int(visibleWidth))×\\(Int(visibleHeight))，缩放：\\(String(format: "%.2f", Double(scale)))x\\n", stderr)
+}
+appIcon.draw(in: iconRect, from: NSRect(origin: .zero, size: appIcon.size),
              operation: .sourceOver, fraction: 1.0)
 
 // Lower-left 2-row bar plate. The fills are static visual identifiers,
