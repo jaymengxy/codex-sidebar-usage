@@ -2,6 +2,9 @@
 
 ## v0.3.1 — polish candidate (2026-10-28, macOS revalidation pending)
 
+- **Native icon sizing correction (2026-10-29):** remove the 98%-occupancy source icon enlargement, which created a Launcher Dock icon about 18% bigger than native ChatGPT in a user screenshot. Draw the ChatGPT artwork at its original canvas scale, preserving macOS-safe transparent padding; measure visible alpha only to position/size the decorative green/orange badge. Increment the bundle build number to help icon cache registration. This change needs macOS visual acceptance.
+
+
 - **Swift Launcher stop control:** make stop state idempotent; suppress late “connected” logs during stop, disable redundant clicks, add a 5-second child-process watchdog and stop-state cleanup. Node supervisor now interrupts its 3-second poll immediately when SIGTERM arrives. The status only becomes “stopped” after process exit is confirmed.
 - **Quota interaction:** replace the question-mark hover cursor with the normal cursor. Click a five-hour or weekly quota to open an explicit reset-time popover; never create a duplicate while the same popover is open. Click elsewhere or press Esc to dismiss; keyboard Enter/Space supported. Remove the redundant native hover tooltip, update panel contents after successful refresh, and clean up events on widget removal.
 - **Native app icon:** generate AppIcon.icns at build time from the locally installed ChatGPT.app icon, overlaying two fixed decorative green/orange bars in the lower-left corner. Original ChatGPT logo bytes are not committed to the repository.
