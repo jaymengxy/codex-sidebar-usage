@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.2 — internationalization candidate (unreleased)
+
+- Swift/AppKit Launcher and macOS build/install scripts select Chinese for Chinese-preferred macOS systems and English otherwise.
+- Terminal quota diagnostics use the same locale with English fallback; Launcher connection state follows locale-independent machine event markers.
+- Quota reset popovers, tooltips, accessibility text and date formatting prefer ChatGPT renderer's declared page language, falling back to system/browser language.
+- No private ChatGPT preference or account storage is inspected. In-app language settings may not always update the renderer's `lang` attribute.
+- The native bundle includes the Node locale module and automated localization regression checks.
+- This work does not modify the existing v0.3.1 release. macOS end-to-end localization still requires manual verification.
+
+
 ## v0.3.1 — released (2026-10-29)
 
 - **Native icon sizing correction (2026-10-29):** remove the 98%-occupancy source icon enlargement, which created a Launcher Dock icon about 18% bigger than native ChatGPT in a user screenshot. Draw the ChatGPT artwork at its original canvas scale, preserving macOS-safe transparent padding; measure visible alpha only to position/size the decorative green/orange badge. Increment the bundle build number to help icon cache registration. The user confirmed the corrected Dock icon size and appearance on macOS.
