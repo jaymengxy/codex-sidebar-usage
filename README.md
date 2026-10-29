@@ -10,6 +10,12 @@ See how much of your five-hour and weekly quota remains without opening the usag
 
 > This is an independent project, **not affiliated with or endorsed by OpenAI**. It uses an unsupported desktop debugging interface and may need updates when ChatGPT changes.
 
+## Language support
+
+The macOS Launcher, terminal output and build/install messages automatically display **Chinese when macOS prefers a Chinese language**, or **English for other system languages**. The quota panel inside ChatGPT prefers the app renderer's declared language, falling back to the system/browser language when unavailable. No language setting is required. A separately chosen ChatGPT language may not always be reflected in the page's `lang` attribute.
+
+This feature is currently in development on `feat/i18n-v0.3.2` and is **not part of the published v0.3.1 release**.
+
 ## Features
 
 - **Quota at a glance:** five-hour (5h) and weekly (7d) remaining percentages.
