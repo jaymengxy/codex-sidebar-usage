@@ -54,6 +54,11 @@ test('SIGTERM aborts the Node monitor poll without waiting for next timer', () =
 
 test('native icon builds from installed ChatGPT icon and never checks in source image', () => {
   assert.match(icon, /NSWorkspace\.shared\.icon\(forFile: chatGPTPath\)/);
+  assert.match(icon, /sample\.colorAt\(x: x, y: y\)/);
+  assert.match(icon, /pixel\.alphaComponent >= 0\.08/);
+  assert.match(icon, /let visibleSize = max\(visibleWidth, visibleHeight\)/);
+  assert.match(icon, /appIcon\.draw\(in: iconRect/);
+  assert.match(swift, /NSApp\.applicationIconImage = iconImage/);
   assert.match(icon, /bar\(y: 207, fraction: 0\.74/);
   assert.match(icon, /bar\(y: 145, fraction: 0\.48/);
   assert.match(builder, /macos\/generate-icon\.swift/);
