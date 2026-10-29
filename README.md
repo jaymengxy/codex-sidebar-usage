@@ -89,6 +89,8 @@ The Launcher bundles the monitoring scripts but uses the locally installed Node.
 
 When you build the app, the installer creates its icon from the ChatGPT icon **already installed on your Mac**, with two small green and orange bars in the lower-left corner. The bars are a visual identifier, not a live quota display. The original ChatGPT icon is not included in this repository.
 
+If the Dock still shows an older icon, quit the Launcher, remove its existing pinned Dock item, then drag `~/Applications/Codex Usage Launcher.app` from Finder into the Dock. If needed, run `killall Dock` to restart Dock without resetting its layout.
+
 To uninstall the Launcher application:
 
 ```bash
