@@ -47,3 +47,12 @@ This development iteration follows the user's original **v0.3.0 PASS** and does 
 - [ ] Original startup, quota accuracy, refresh and 4/4 restart/recovery scenarios remain passing.
 
 Linux/static tests cannot substitute for these AppKit/Finder/rendered UI checks. **Do not mark v0.3.1 as accepted until these are completed.**
+
+## v0.3.1 release acceptance update (2026-10-29)
+
+- The owner supplied a screenshot showing the Launcher icon was visibly oversized relative to ChatGPT in Dock. The icon generator was changed to preserve the original artwork's macOS transparent inset, while scaling only the two-bar overlay.
+- On 2026-10-29 the owner confirmed the corrected icon's proportions were acceptable and explicitly requested merge, tag, and release of v0.3.1.
+- Previously reported v0.3.0 manual recovery acceptance (4/4) remains unchanged.
+- **Evidence boundary:** the revised Swift stop status and new reset-time popover have source-level regression coverage, but there is no separate explicit on-device acceptance report for those two cases.
+
+Release decision: approved by the owner for v0.3.1 on the tested macOS ChatGPT build. Other application versions and the optional legacy login LaunchAgent remain outside the acceptance scope.
