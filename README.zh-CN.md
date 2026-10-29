@@ -87,6 +87,8 @@ Launcher 会打包额度监控所需的脚本，但仍使用本机安装的 Node
 
 构建时会读取**本机已安装的 ChatGPT 图标**，并在左下角加入绿色和橙色的双横向进度条，作为 Launcher 的识别标志。图标中的进度条并非实时额度；仓库也不会附带 ChatGPT 原始图标文件。
 
+如果 Dock 没有更新图标，请先完全退出 Launcher，从 Dock 移除原来的固定图标，再将 `~/Applications/Codex Usage Launcher.app` 从 Finder 拖入 Dock。必要时运行 `killall Dock` 让 Dock 自动重新启动；这不会清空 Dock 的应用排列。
+
 卸载 Launcher：
 
 ```bash
