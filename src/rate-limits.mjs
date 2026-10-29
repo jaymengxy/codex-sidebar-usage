@@ -1,3 +1,4 @@
+import { tr } from './i18n.mjs';
 /**
  * Pure, credential-free normalization for the Codex App Server rate-limits RPC.
  * A missing bucket is unknown, not 100% remaining.
@@ -24,7 +25,7 @@ export function normalizeRateLimits(response) {
   // Explicitly select the default Codex quota, not model-specific extras.
   const snapshot = result?.rateLimitsByLimitId?.codex ?? result?.rateLimits;
   if (!snapshot || typeof snapshot !== 'object') {
-    throw new Error('Codex App Server 未返回 rateLimits');
+    throw new Error(tr('Codex App Server 未返回 rateLimits', 'Codex App Server returned no rateLimits'));
   }
   const windows = [snapshot.primary, snapshot.secondary]
     .map(normalizeWindow)
