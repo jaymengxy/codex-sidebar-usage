@@ -1,0 +1,53 @@
+name: Publish v0.3.3
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: "${{ startsWith(github.event.head_commit.message, 'release: v0.3.3') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v0.3.3 tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.3.3 >/dev/null 2>&1; then
+            echo "v0.3.3 is already published."
+            exit 0
+          fi
+          cat > "${RUNNER_TEMP}/v0.3.3-notes.md" <<'NOTES'
+          ## Codex Sidebar Usage v0.3.3
+
+          ### What's new
+          - **Optional five-hour quota:** the 5h green progress bar is shown only when the Codex App Server returns a valid 300-minute quota window. Accounts with only a weekly limit see **only the 7d orange progress bar**.
+          - No account-plan hardcoding: display follows the actual API response. Weekly-only, five-hour-plus-weekly, and unknown-window results have regression tests.
+          - The five-hour reset-time popover closes automatically if a refreshed response no longer contains that window.
+          - English and Chinese READMEs now show both dual-window and weekly-only preview examples.
+          - Existing automatic Chinese/English localization, native Swift Launcher, one-command Terminal startup and refresh/recovery are preserved.
+
+          ### Supported scope
+          Intended for Codex accounts reporting the standard 5h and/or 7d usage windows, including eligible Plus, Pro 100/200/500, and Business Standard accounts. The quota windows returned by the API—not the subscription name—determine what appears. **Enterprise custom Credits and organization budgets are not supported.**
+
+          ### Install
+          Source-only release; no precompiled or notarized macOS .app is included. Requires macOS and Node.js 22+.
+          - Terminal: `npm run launch`
+          - Native Launcher: `npm run launcher:build && npm run launcher:install` (also requires Xcode Command Line Tools)
+
+          [English README](https://github.com/jaymengxy/codex-sidebar-usage/blob/v0.3.3/README.md) · [简体中文](https://github.com/jaymengxy/codex-sidebar-usage/blob/v0.3.3/README.zh-CN.md)
+
+          ### Notes
+          The project is unofficial and uses local-only CDP. GitHub CI passed Node tests in both languages, Shell syntax, and macOS Swift/AppKit compilation. This weekly-only layout has not been verified with all paid subscription tiers on live accounts. All third-party trademarks and app artwork remain the property of their owners.
+          NOTES
+          gh release create v0.3.3 --target "${RELEASE_SHA}" \
+            --title "Codex Sidebar Usage v0.3.3" \
+            --notes-file "${RUNNER_TEMP}/v0.3.3-notes.md" \
+            --latest
