@@ -1,6 +1,6 @@
 # Codex Sidebar Usage
 
-**Latest release: v0.3.2** · [Releases](https://github.com/jaymengxy/codex-sidebar-usage/releases)
+**Latest release: v0.3.3** · [Releases](https://github.com/jaymengxy/codex-sidebar-usage/releases)
 
 [![English](https://img.shields.io/badge/README-English-377cfb)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-777777)](README.zh-CN.md)
 
