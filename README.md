@@ -6,7 +6,7 @@
 
 A lightweight, unofficial macOS utility that displays your **Codex usage limits directly in the left navigation bar of the ChatGPT desktop app**.
 
-See how much of your five-hour and weekly quota remains without opening the usage settings.
+See your weekly Codex quota at a glance, along with a five-hour quota whenever your account provides one.
 
 > This is an independent project, **not affiliated with or endorsed by OpenAI**. It uses an unsupported desktop debugging interface and may need updates when ChatGPT changes.
 
@@ -16,18 +16,28 @@ The macOS Launcher, terminal output and build/install messages automatically dis
 
 ## Features
 
-- **Quota at a glance:** five-hour (5h) and weekly (7d) remaining percentages.
-- **Color-coded progress:** green for the five-hour quota and orange for the weekly quota.
+- **Quota at a glance:** weekly (7d) remaining percentage, plus five-hour (5h) remaining percentage when the server provides that quota window.
+- **Color-coded progress:** orange for the weekly quota, green for the five-hour quota when available.
 - **Reset details:** click a quota to view its remaining percentage, reset time, and last update. Click outside the panel or press **Esc** to close it.
 - **Refresh controls:** click ↻ to check for updated usage; the display also refreshes periodically and when you return to it.
 - **Automatic recovery:** the indicator comes back after the ChatGPT window reloads.
 - **Two ways to run:** use a single Terminal command, or build a native macOS Launcher that you can open from Finder or the Dock.
 
-The percentages come from a Codex usage snapshot, so they may not change immediately after every request. If a quota window is unavailable, the indicator displays `--`.
+The percentages come from a Codex usage snapshot, so they may not change immediately after every request. If the API does not return a valid five-hour quota, **the 5h row is hidden**, not displayed as `--` or treated as 100% available. If weekly data is temporarily unavailable, the 7d row displays `--`.
+
+The display is based on actual **Codex App Server quota windows**, not a subscription-name check. It is intended for Plus, Pro 100/200/500 and Business Standard accounts when they report weekly limits. Enterprise credits and custom organization budgets are not supported.
 
 ## Preview
 
-![Codex usage indicator in the ChatGPT sidebar with the quota reset-time panel](docs/images/sidebar-quota-preview-en.webp)
+**Five-hour and weekly quotas**
+
+![Five-hour and weekly usage in the ChatGPT sidebar](docs/images/sidebar-quota-preview-en.webp)
+
+**Weekly quota only**
+
+![Weekly-only usage indicator and reset-time popover](docs/images/sidebar-weekly-only-en.svg)
+
+*Illustrative quota values and reset times; the available rows depend on the account's server response.*
 
 ## Before you start
 
