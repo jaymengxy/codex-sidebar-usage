@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.3 — optional five-hour quota (development)
+## v0.3.3 — released (2026-10-30)
 
 - Show the five-hour quota row only when `account/rateLimits/read` provides a valid 300-minute window. Hide the row until the first successful response to avoid a temporary placeholder.
 - Preserve the weekly quota, refresh controls, and existing `--` fallback if weekly data is unavailable.
