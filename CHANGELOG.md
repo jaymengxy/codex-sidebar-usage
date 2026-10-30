@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.3 — released (2026-10-30)
+
+- Show the five-hour quota row only when `account/rateLimits/read` provides a valid 300-minute window. Hide the row until the first successful response to avoid a temporary placeholder.
+- Preserve the weekly quota, refresh controls, and existing `--` fallback if weekly data is unavailable.
+- When the five-hour window disappears on a refresh, close any open five-hour reset-time popup.
+- Add weekly-only example illustrations to both READMEs, retaining the original two-window screenshots.
+- Include tests for weekly-only, dual-window, and unknown-period API responses. Enterprise credits remain out of scope.
+
+
 ## v0.3.2 — release
 
 - Swift/AppKit Launcher and macOS build/install scripts select Chinese for Chinese-preferred macOS systems and English otherwise.

@@ -1,6 +1,6 @@
 # Codex Sidebar Usage
 
-**当前版本：v0.3.2** · [版本发布](https://github.com/jaymengxy/codex-sidebar-usage/releases)
+**当前版本：v0.3.3** · [版本发布](https://github.com/jaymengxy/codex-sidebar-usage/releases)
 
 [![English](https://img.shields.io/badge/README-English-777777)](README.md) [![简体中文](https://img.shields.io/badge/README-简体中文-377cfb)](README.zh-CN.md)
 
@@ -16,18 +16,28 @@ Launcher 窗口、终端运行日志、构建及安装提示会根据 **macOS �
 
 ## 功能介绍
 
-- **剩余额度：**展示 5 小时（5h）和每周（7d）的可用额度百分比。
-- **彩色进度条：**5 小时额度为绿色，每周额度为橙色。
+- **剩余额度：**展示每周（7d）可用额度百分比；如果账户还提供 5 小时额度，则同时展示 5h。
+- **彩色进度条：**每周额度使用橙色；返回 5 小时额度时，额外显示绿色进度条。
 - **重置时间：**点击任一额度，可查看剩余比例、重置时间和最近更新时间；点击浮窗外部或按 **Esc** 关闭。
 - **便捷刷新：**点击 ↻ 手动更新额度，也支持定期刷新和交互时按需刷新。
 - **自动恢复：**ChatGPT 窗口重新加载后，额度组件可自动恢复。
 - **两种启动方式：**使用终端一条命令启动，或安装可以从 Finder、Dock 双击打开的 macOS 原生 Launcher。
 
-额度来自服务端用量快照，不保证每次请求后立即变化。无法获取某一时间窗口的数据时，将显示 `--`。
+额度来自服务端用量快照，不保证每次请求后立即变化。**接口没有返回有效的 5 小时额度时，5h 区域会直接隐藏**，不会显示 `--`，也不会将缺失额度解释为剩余 100%。如果暂时无法获取每周额度，7d 会显示 `--`。
+
+工具只依据 **Codex App Server 实际返回的额度周期** 决定显示内容，不通过套餐名称判断。适用于返回每周额度的 Plus、Pro 100/200/500、Business Standard 等账户；暂不适配 Enterprise Credits 和组织预算。
 
 ## 界面预览
 
-![ChatGPT 左侧导航栏的 Codex 剩余额度与重置时间浮窗](docs/images/sidebar-quota-preview.png)
+**五小时与每周额度同时存在**
+
+![ChatGPT 左侧导航栏同时显示五小时与每周剩余额度](docs/images/sidebar-quota-preview.png)
+
+**仅返回每周额度**
+
+![只有每周额度时的侧栏及重置时间浮窗示例](docs/images/sidebar-weekly-only-zh.svg)
+
+*图片中的额度和时间仅为布局示例；具体展示取决于账户返回的额度数据。*
 
 ## 使用前准备
 

@@ -28,6 +28,7 @@
   root.innerHTML = `
     <style>
       #${WIDGET_ID} .quota{width:36px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default;user-select:none}
+      #${WIDGET_ID} .quota[hidden]{display:none}
       #${WIDGET_ID} .label{font-size:9px;line-height:11px;opacity:.7}
       #${WIDGET_ID} .pct{font-size:11px;line-height:13px;font-weight:600;font-variant-numeric:tabular-nums}
       #${WIDGET_ID} .track{display:block;flex:0 0 auto;position:relative;width:32px;height:3px;border-radius:9px;background:color-mix(in srgb,currentColor 18%,transparent);overflow:hidden}
@@ -38,7 +39,7 @@
       #${WIDGET_ID} .reload:hover{background:color-mix(in srgb,currentColor 9%,transparent)}
       #${WIDGET_ID} .reload:disabled{cursor:wait;opacity:.5}
     </style>
-    <div class="quota" data-quota="five"><span class="label">5h</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
+    <div class="quota" data-quota="five" hidden><span class="label">5h</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
     <div class="quota" data-quota="week"><span class="label">7d</span><span class="pct">--</span><span class="track"><span class="fill"></span></span></div>
     <button type="button" class="reload" aria-label="刷新额度" title="点击刷新额度">↻</button>
   `;
@@ -165,6 +166,12 @@
 
   const render = () => {
     setLabels();
+    // Not all Codex quota plans expose a five-hour window.
+    // Hide it until a valid 300-minute quota actually arrives. Keep the
+    // weekly slot visible (with -- if data is unavailable) for diagnostics.
+    const fiveHourElement = root.querySelector('[data-quota="five"]');
+    fiveHourElement.hidden = snapshot?.fiveHour == null;
+    if (fiveHourElement.hidden && popoverKey === 'five') closePopover();
     for (const [key, value] of [
       ['five', snapshot?.fiveHour],
       ['week', snapshot?.weekly],
